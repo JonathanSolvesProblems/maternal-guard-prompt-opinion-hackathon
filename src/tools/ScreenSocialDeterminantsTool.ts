@@ -1,0 +1,185 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import { Request } from "express";
+import { IMcpTool } from "../IMcpTool";
+import { z } from "zod";
+import { FhirUtilities } from "../fhir-utilities";
+import { McpUtilities } from "../mcp-utilities";
+import { NullUtilities } from "../null-utilities";
+import { FhirClientInstance } from "../fhir-client";
+import { fhirR4 } from "@smile-cdr/fhirts";
+
+class ScreenSocialDeterminantsTool implements IMcpTool {
+  registerTool(server: McpServer, req: Request) {
+    server.registerTool(
+      "ScreenSocialDeterminants",
+      {
+        description:
+          "Retrieves and structures a pregnant patient's demographic, insurance, address, and social history data from FHIR for Social Determinants of Health (SDOH) screening. Identifies potential barriers to maternal care such as lack of insurance, missing contact info, language barriers, and social risk factors. Returns structured data for the platform AI to analyze.",
+        inputSchema: {
+          patientId: z
+            .string()
+            .describe(
+              "The FHIR Patient resource ID. Optional if patient context is provided via SHARP headers.",
+            )
+            .optional(),
+        },
+      },
+      async ({ patientId }) => {
+        try {
+          if (!patientId) {
+            patientId = NullUtilities.getOrThrow(
+              FhirUtilities.getPatientIdIfContextExists(req),
+              "No patient ID provided and no patient context found in SHARP headers.",
+            );
+          }
+
+          const [patient, socialHistory, coverage] = await Promise.all([
+            FhirClientInstance.read<fhirR4.Patient>(req, `Patient/${patientId}`),
+            FhirClientInstance.search(req, "Observation", [
+              `patient=${patientId}`,
+              `category=social-history`,
+            ]),
+            FhirClientInstance.search(req, "Coverage", [
+              `patient=${patientId}`,
+              `status=active`,
+            ]),
+          ]);
+
+          if (!patient) {
+            return McpUtilities.createTextResponse(
+              `Patient with ID ${patientId} could not be found.`,
+              { isError: true },
+            );
+          }
+
+          const result = this._buildSdohProfile(patient, socialHistory, coverage);
+          return McpUtilities.createJsonResponse(result);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return McpUtilities.createTextResponse(
+            `Error retrieving SDOH data: ${message}`,
+            { isError: true },
+          );
+        }
+      },
+    );
+  }
+
+  private _buildSdohProfile(
+    patient: fhirR4.Patient,
+    socialHistory: fhirR4.Bundle | null,
+    coverage: fhirR4.Bundle | null,
+  ) {
+    // Identify potential red flags
+    const potentialBarriers: string[] = [];
+
+    // Address analysis
+    const address = patient.address?.[0];
+    const hasAddress = !!address;
+    if (!hasAddress) {
+      potentialBarriers.push("No address on file — possible housing instability");
+    }
+
+    // Contact info
+    const hasPhone = patient.telecom?.some((t) => t.system === "phone") ?? false;
+    const hasEmail = patient.telecom?.some((t) => t.system === "email") ?? false;
+    if (!hasPhone && !hasEmail) {
+      potentialBarriers.push("No contact information on file — may be difficult to reach for appointments");
+    }
+
+    // Language barriers
+    const languages = patient.communication?.map((comm) => ({
+      language: comm.language?.coding?.[0]?.display || comm.language?.text || "Unknown",
+      preferred: comm.preferred ?? false,
+    })) || [];
+    const hasNonEnglishPrimary = languages.some(
+      (l) => l.preferred && !l.language.toLowerCase().includes("english"),
+    );
+    if (hasNonEnglishPrimary) {
+      potentialBarriers.push(`Primary language is not English — interpreter services may be needed`);
+    }
+
+    // Insurance
+    const coverageEntries: Array<{ type: string; status: string }> = [];
+    if (coverage?.entry?.length) {
+      for (const entry of coverage.entry) {
+        const cov = entry.resource as fhirR4.Coverage;
+        coverageEntries.push({
+          type: cov.type?.coding?.[0]?.display || cov.type?.text || "Unknown",
+          status: cov.status || "unknown",
+        });
+      }
+    } else {
+      potentialBarriers.push("No active insurance coverage found — significant barrier to prenatal care access");
+    }
+
+    // Social history observations
+    const socialFactors: Array<{
+      type: string;
+      value: string;
+      code: string;
+      date: string;
+    }> = [];
+    if (socialHistory?.entry?.length) {
+      for (const entry of socialHistory.entry) {
+        const obs = entry.resource as fhirR4.Observation;
+        let value = "";
+        if (obs.valueCodeableConcept) {
+          value = obs.valueCodeableConcept.coding?.[0]?.display || obs.valueCodeableConcept.text || "";
+        } else if (obs.valueQuantity) {
+          value = `${obs.valueQuantity.value} ${obs.valueQuantity.unit || ""}`;
+        } else if (obs.valueString) {
+          value = obs.valueString;
+        }
+        socialFactors.push({
+          type: obs.code?.coding?.[0]?.display || obs.code?.text || "Unknown",
+          value,
+          code: obs.code?.coding?.[0]?.code || "",
+          date: obs.effectiveDateTime || obs.issued || "",
+        });
+      }
+    } else {
+      potentialBarriers.push("No social history observations recorded — formal SDOH screening may not have been conducted");
+    }
+
+    return {
+      disclaimer:
+        "This is structured demographic and social data for SDOH screening. A comprehensive assessment by a social worker or care coordinator is recommended for any identified risk factors.",
+      screeningDate: new Date().toISOString().split("T")[0],
+      patientId: patient.id,
+      demographics: {
+        birthDate: patient.birthDate || null,
+        gender: patient.gender || null,
+        maritalStatus:
+          patient.maritalStatus?.coding?.[0]?.display ||
+          patient.maritalStatus?.text ||
+          null,
+        address: hasAddress
+          ? {
+              line: address!.line?.join(" ") || null,
+              city: address!.city || null,
+              state: address!.state || null,
+              postalCode: address!.postalCode || null,
+            }
+          : null,
+        hasPhone,
+        hasEmail,
+        languages,
+      },
+      insuranceCoverage: coverageEntries,
+      socialHistoryObservations: socialFactors,
+      potentialBarriers,
+      sdohDomainsToAssess: [
+        "Economic Stability — employment, income, insurance adequacy",
+        "Education Access — health literacy, understanding of prenatal care",
+        "Healthcare Access — transportation to appointments, provider availability, interpreter needs",
+        "Neighborhood & Environment — housing stability, food access, safety",
+        "Social & Community Context — social support, domestic violence screening, isolation",
+      ],
+      equityContext:
+        "Maternal mortality in the US disproportionately affects Black and Indigenous women (3-4x higher rates). SDOH factors are major contributors to these disparities. Consider these factors in the overall risk assessment.",
+    };
+  }
+}
+
+export const ScreenSocialDeterminantsToolInstance = new ScreenSocialDeterminantsTool();
