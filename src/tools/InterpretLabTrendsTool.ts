@@ -52,18 +52,21 @@ class InterpretLabTrendsTool implements IMcpTool {
         inputSchema: {
           patientId: z
             .string()
+            .nullable()
             .describe(
               "The FHIR Patient resource ID. Optional if patient context is provided via SHARP headers.",
             )
             .optional(),
           labTypes: z
             .array(z.string())
+            .nullable()
             .describe(
               'Array of lab/vital types to retrieve. Options: "blood-pressure", "glucose", "fasting-glucose", "hemoglobin", "hematocrit", "platelets", "proteinuria", "uric-acid", "ast", "alt", "weight". If empty or omitted, retrieves all available.',
             )
             .optional(),
           gestationalAgeWeeks: z
             .number()
+            .nullable()
             .describe(
               "Current gestational age in weeks for context-appropriate reference ranges.",
             )

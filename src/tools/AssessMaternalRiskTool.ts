@@ -37,6 +37,7 @@ class AssessMaternalRiskTool implements IMcpTool {
         inputSchema: {
           patientId: z
             .string()
+            .nullable()
             .describe(
               "The FHIR Patient resource ID. Optional if patient context is provided via SHARP headers.",
             )

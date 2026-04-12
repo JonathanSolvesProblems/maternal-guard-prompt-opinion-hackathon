@@ -18,18 +18,21 @@ class GenerateCarePlanTool implements IMcpTool {
         inputSchema: {
           patientId: z
             .string()
+            .nullable()
             .describe(
               "The FHIR Patient resource ID. Optional if patient context is provided via SHARP headers.",
             )
             .optional(),
           riskLevel: z
             .string()
+            .nullable()
             .describe(
               'Overall risk level from a prior AssessMaternalRisk call. One of: "low", "moderate", "high", "critical". Defaults to "moderate" if not provided.',
             )
             .optional(),
           gestationalAgeWeeks: z
             .number()
+            .nullable()
             .describe(
               "Current gestational age in weeks. Helps determine appropriate screenings and visit schedule.",
             )
