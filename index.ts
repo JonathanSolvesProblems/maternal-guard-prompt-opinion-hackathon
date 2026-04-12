@@ -28,6 +28,17 @@ app.get("/health", async (_, res) => {
 
 app.post("/mcp", async (req, res) => {
   try {
+    const method = req.body?.method || "unknown";
+    const fhirUrl = req.headers["x-fhir-server-url"];
+    const patientId = req.headers["x-patient-id"];
+    console.log(
+      `[MCP] method=${method} | x-patient-id=${patientId || "MISSING"} | x-fhir-server-url=${fhirUrl || "MISSING"}`,
+    );
+    const hasToken = !!req.headers["x-fhir-access-token"];
+    if (req.body?.params?.name) {
+      console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(req.body.params.arguments || {})} token=${hasToken ? "YES" : "NO"}`);
+    }
+
     const server = new McpServer(
       {
         name: "MaternalGuard",

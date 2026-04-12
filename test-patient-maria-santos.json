@@ -1,0 +1,1609 @@
+{
+  "resourceType": "Bundle",
+  "type": "batch",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          {
+            "system": "https://github.com/synthetichealth/synthea",
+            "value": "maria-santos-2026-001"
+          },
+          {
+            "system": "http://hospital.smarthealthit.org",
+            "value": "MRN-MS-001"
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "Santos",
+            "given": ["Maria", "Elena"]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1997-08-15",
+        "address": [
+          {
+            "use": "home",
+            "line": ["847 W Cermak Rd", "Apt 3B"],
+            "city": "Chicago",
+            "state": "IL",
+            "postalCode": "60616",
+            "country": "US"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "312-555-0147",
+            "use": "mobile"
+          }
+        ],
+        "communication": [
+          {
+            "language": {
+              "coding": [
+                {
+                  "system": "urn:ietf:bcp:47",
+                  "code": "es",
+                  "display": "Spanish"
+                }
+              ]
+            },
+            "preferred": true
+          },
+          {
+            "language": {
+              "coding": [
+                {
+                  "system": "urn:ietf:bcp:47",
+                  "code": "en",
+                  "display": "English"
+                }
+              ]
+            },
+            "preferred": false
+          }
+        ],
+        "maritalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+              "code": "M",
+              "display": "Married"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient",
+        "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|maria-santos-2026-001"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000001",
+      "resource": {
+        "resourceType": "Coverage",
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+              "code": "MEDICAID",
+              "display": "Medicaid"
+            }
+          ],
+          "text": "Illinois Medicaid (MMAI)"
+        },
+        "beneficiary": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "payor": [
+          {
+            "display": "Illinois Department of Healthcare and Family Services"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Coverage"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000002",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "type": "allergy",
+        "category": ["medication"],
+        "criticality": "low",
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "7980",
+              "display": "Penicillin"
+            }
+          ],
+          "text": "Penicillin — causes rash"
+        },
+        "patient": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000003",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "encounter-diagnosis"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "Z34.32",
+              "display": "32 weeks gestation of pregnancy"
+            }
+          ],
+          "text": "Pregnancy at 32 weeks gestation (G2P1)"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "onsetDateTime": "2025-08-27"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000004",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "O14.00",
+              "display": "Mild to moderate pre-eclampsia, unspecified trimester"
+            }
+          ],
+          "text": "Mild preeclampsia — diagnosed at 30 weeks. BP 142/91, proteinuria 35 mg/dL. On labetalol."
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "onsetDateTime": "2026-03-14"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000005",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "O24.410",
+              "display": "Gestational diabetes mellitus in pregnancy, diet controlled"
+            }
+          ],
+          "text": "Gestational diabetes mellitus (GDM) — diagnosed at 24 weeks. OGTT 1-hr 195 mg/dL. On metformin."
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "onsetDateTime": "2026-02-04"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000006",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "inactive"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "O09.21",
+              "display": "Supervision of pregnancy with history of pre-term labor, second trimester"
+            }
+          ],
+          "text": "History of preterm birth at 34 weeks (2023)"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "onsetDateTime": "2023-06-10"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000010",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood Pressure Panel"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2025-11-15",
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic Blood Pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 118,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic Blood Pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 72,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000011",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood Pressure Panel"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-02-14",
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic Blood Pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 130,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic Blood Pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 82,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000012",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood Pressure Panel"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-03-14",
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic Blood Pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 142,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic Blood Pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 91,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000013",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood Pressure Panel"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-04-04",
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic Blood Pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 148,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic Blood Pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 95,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000014",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "29463-7",
+              "display": "Body Weight"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2025-11-15",
+        "valueQuantity": {
+          "value": 65.0,
+          "unit": "kg",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000015",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "29463-7",
+              "display": "Body Weight"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-04-04",
+        "valueQuantity": {
+          "value": 76.8,
+          "unit": "kg",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000016",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2345-7",
+              "display": "Glucose [Mass/volume] in Serum or Plasma"
+            }
+          ],
+          "text": "OGTT 1-hour glucose"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-02-04",
+        "valueQuantity": {
+          "value": 195,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "H",
+                "display": "High"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000017",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1558-6",
+              "display": "Fasting Glucose"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-02-04",
+        "valueQuantity": {
+          "value": 102,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "H",
+                "display": "High"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000018",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1558-6",
+              "display": "Fasting Glucose"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-04-04",
+        "valueQuantity": {
+          "value": 94,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000019",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "718-7",
+              "display": "Hemoglobin [Mass/volume] in Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2025-11-15",
+        "valueQuantity": {
+          "value": 11.8,
+          "unit": "g/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "g/dL"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-00000000001a",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "718-7",
+              "display": "Hemoglobin [Mass/volume] in Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-04-04",
+        "valueQuantity": {
+          "value": 10.9,
+          "unit": "g/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "g/dL"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "L",
+                "display": "Low"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-00000000001b",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "777-3",
+              "display": "Platelets [#/volume] in Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-03-14",
+        "valueQuantity": {
+          "value": 162,
+          "unit": "10*3/uL",
+          "system": "http://unitsofmeasure.org",
+          "code": "10*3/uL"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-00000000001c",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "777-3",
+              "display": "Platelets [#/volume] in Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-04-04",
+        "valueQuantity": {
+          "value": 141,
+          "unit": "10*3/uL",
+          "system": "http://unitsofmeasure.org",
+          "code": "10*3/uL"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-00000000001d",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2888-6",
+              "display": "Protein [Mass/volume] in Urine"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-03-14",
+        "valueQuantity": {
+          "value": 35,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "H",
+                "display": "High"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-00000000001e",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2888-6",
+              "display": "Protein [Mass/volume] in Urine"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-04-04",
+        "valueQuantity": {
+          "value": 42,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "H",
+                "display": "High"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-00000000001f",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1920-8",
+              "display": "AST [Enzymatic activity/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-03-14",
+        "valueQuantity": {
+          "value": 38,
+          "unit": "U/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "U/L"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000020",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1920-8",
+              "display": "AST [Enzymatic activity/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-04-04",
+        "valueQuantity": {
+          "value": 54,
+          "unit": "U/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "U/L"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "H",
+                "display": "High"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000021",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "3084-1",
+              "display": "Urate [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-04-04",
+        "valueQuantity": {
+          "value": 6.9,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "H",
+                "display": "High"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000022",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "social-history"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "56051-6",
+              "display": "Do you have transportation to your medical appointments?"
+            }
+          ],
+          "text": "Transportation access"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-02-14",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LA30122-8",
+              "display": "Sometimes"
+            }
+          ],
+          "text": "Relies on public transit. No personal vehicle. Misses appointments due to CTA delays."
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000023",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "social-history"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "88124-3",
+              "display": "Food insecurity risk [HVS]"
+            }
+          ],
+          "text": "Food security"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-02-14",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LA19952-3",
+              "display": "At risk"
+            }
+          ],
+          "text": "Borderline food insecurity. Enrolled in WIC. Lives in food desert neighborhood."
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000024",
+      "resource": {
+        "resourceType": "Observation",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "social-history"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "67875-5",
+              "display": "Employment status - current"
+            }
+          ],
+          "text": "Employment status"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "effectiveDateTime": "2026-02-14",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "745862008",
+              "display": "Part-time employed"
+            }
+          ],
+          "text": "Part-time food service worker. Income below 200% FPL. No paid family leave."
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000030",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "387456",
+              "display": "Labetalol 200 MG Oral Tablet"
+            }
+          ],
+          "text": "Labetalol 200mg oral twice daily — for hypertension in pregnancy (preeclampsia)"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "authoredOn": "2026-03-14",
+        "dosageInstruction": [
+          {
+            "text": "200mg by mouth twice daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationRequest"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000031",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "861007",
+              "display": "Metformin 500 MG Oral Tablet"
+            }
+          ],
+          "text": "Metformin 500mg oral twice daily — for gestational diabetes mellitus"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "authoredOn": "2026-02-28",
+        "dosageInstruction": [
+          {
+            "text": "500mg by mouth twice daily with meals"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationRequest"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000032",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "243670",
+              "display": "Aspirin 81 MG Oral Tablet"
+            }
+          ],
+          "text": "Low-dose aspirin 81mg once daily at bedtime — ACOG preeclampsia prevention"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "authoredOn": "2025-11-15",
+        "dosageInstruction": [
+          {
+            "text": "81mg by mouth once daily at bedtime"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationRequest"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000033",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "376209",
+              "display": "Prenatal Vitamins Oral Tablet"
+            }
+          ],
+          "text": "Prenatal vitamins with DHA once daily"
+        },
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "authoredOn": "2025-10-01",
+        "dosageInstruction": [
+          {
+            "text": "One tablet by mouth once daily"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationRequest"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000040",
+      "resource": {
+        "resourceType": "CarePlan",
+        "status": "active",
+        "intent": "plan",
+        "title": "High-Risk Prenatal Care Plan — Preeclampsia + GDM",
+        "description": "Coordinated care for Maria Santos, G2P1, 32 weeks, mild preeclampsia and GDM. Managed by OB and MFM. Spanish interpreter required for all visits.",
+        "subject": {
+          "reference": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339"
+        },
+        "period": {
+          "start": "2025-10-01",
+          "end": "2026-06-30"
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "134435003",
+                "display": "Routine antenatal care"
+              }
+            ]
+          }
+        ],
+        "goal": [
+          {
+            "display": "Maintain BP <140/90 mmHg through remainder of pregnancy"
+          },
+          {
+            "display": "Maintain fasting glucose <92 mg/dL and postprandial <120 mg/dL"
+          },
+          {
+            "display": "Prevent progression to severe preeclampsia or HELLP syndrome"
+          }
+        ],
+        "activity": [
+          {
+            "detail": {
+              "kind": "Appointment",
+              "status": "in-progress",
+              "description": "Weekly OB visits with BP check and NST starting at 32 weeks"
+            }
+          },
+          {
+            "detail": {
+              "kind": "ServiceRequest",
+              "status": "in-progress",
+              "description": "Repeat labs every 2 weeks: CBC, CMP, urine protein — monitor for HELLP"
+            }
+          },
+          {
+            "detail": {
+              "kind": "Appointment",
+              "status": "scheduled",
+              "description": "MFM consult within 1 week for preeclampsia management"
+            }
+          },
+          {
+            "detail": {
+              "kind": "ServiceRequest",
+              "status": "scheduled",
+              "description": "GBS culture at 36 weeks"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "CarePlan"
+      }
+    }
+  ]
+}
