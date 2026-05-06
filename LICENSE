@@ -19,3 +19,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Note on bundled clinical content: the guideline PDFs in
+test-cases/clinical-guidelines/ are NOT covered by this MIT license. Each
+retains its original license as documented in
+test-cases/clinical-guidelines/README.md:
+
+  - USPSTF, CDC MMWR: US federal government, public domain
+  - NICE NG133: Crown copyright, reusable for non-commercial decision support
+  - WHO 2022 Antenatal Corticosteroids: CC BY-NC-SA 3.0 IGO
+  - IADPSG 2010 paper: CC open access via PubMed Central
+
+The synthetic patient data in test-cases/patient-maria-santos-bundle.json and
+test-cases/documents/maria-santos/ is entirely fabricated for demonstration
+purposes and contains no real PHI.

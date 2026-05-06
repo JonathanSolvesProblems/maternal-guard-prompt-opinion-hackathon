@@ -6,6 +6,11 @@
       "fullUrl": "urn:uuid:8f381b07-6423-a4b3-5f68-c5a635861339",
       "resource": {
         "resourceType": "Patient",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+          ]
+        },
         "identifier": [
           {
             "system": "https://github.com/synthetichealth/synthea",
@@ -117,6 +122,11 @@
       "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000002",
       "resource": {
         "resourceType": "AllergyIntolerance",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance"
+          ]
+        },
         "clinicalStatus": {
           "coding": [
             {
@@ -1536,6 +1546,11 @@
       "fullUrl": "urn:uuid:7c2e8a91-1234-4abc-9def-000000000040",
       "resource": {
         "resourceType": "CarePlan",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careplan"
+          ]
+        },
         "status": "active",
         "intent": "plan",
         "title": "High-Risk Prenatal Care Plan — Preeclampsia + GDM",

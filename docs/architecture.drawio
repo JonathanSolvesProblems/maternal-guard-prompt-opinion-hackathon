@@ -1,0 +1,174 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0" version="29.6.1">
+  <diagram name="MaternalGuard Architecture" id="maternalguard-arch">
+    <mxGraphModel dx="1088" dy="594" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" value="MaternalGuard — End-to-End Architecture (Orchestrator + BYO Specialist + Grounded Collection + MCP + FHIR)" vertex="1">
+          <mxGeometry height="40" width="1480" x="60" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane-clinician" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;startSize=30;fontSize=14;fontStyle=1" value="Clinician" vertex="1">
+          <mxGeometry height="1040" width="260" x="60" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="clinician-icon" parent="swimlane-clinician" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=14" value="👩‍⚕️&#xa;OB / MFM&#xa;clinician" vertex="1">
+          <mxGeometry height="100" width="160" x="50" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="clinician-actions" parent="swimlane-clinician" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;align=left;spacingLeft=10" value="Actions:&#xa;• Select patient&#xa;• Launch agent&#xa;• Read brief&#xa;• Sign off (human-in-the-loop)" vertex="1">
+          <mxGeometry height="120" width="200" x="30" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane-platform" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;startSize=30;fontSize=14;fontStyle=1" value="Prompt Opinion Platform" vertex="1">
+          <mxGeometry height="1040" width="520" x="340" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="launchpad" parent="swimlane-platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=13;fontStyle=1" value="Launchpad / Chat UI&#xa;(patient picker + prompt input)" vertex="1">
+          <mxGeometry height="60" width="440" x="40" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="byo-triage" parent="swimlane-platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacingLeft=10;fontStyle=1" value="Orchestrator Agent: On-Call OB Triage&#xa;&#xa;• No MCP tools attached&#xa;• Linked Agent: Prenatal Visit Prep&#xa;• Skill: triage_pregnancy_concern&#xa;• Disposition: REASSURANCE / OFFICE VISIT / L&amp;D / EMERGENCY&#xa;• Language-appropriate patient summary" vertex="1">
+          <mxGeometry height="160" width="220" x="10" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="byo-prep" parent="swimlane-platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacingLeft=10;fontStyle=1" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;BYO Agent: Prenatal Visit Prep&lt;/span&gt;&lt;/div&gt;• Skill: generate_prenatal_visit_brief&lt;br&gt;• Attached: MaternalGuard MCP + Collection&lt;br&gt;• 6-section brief (headline, trajectory, SDOH, gaps, neonatal, actions)&lt;br&gt;• Enforces gestationalAgeWeeks compute&lt;br&gt;• Cites ACOG PB + LOINC + grounded quotes" vertex="1">
+          <mxGeometry height="200" width="220" x="300" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="marketplace" parent="swimlane-platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=center;fontStyle=1" value="Prompt Opinion Marketplace&#xa;(A2A skill discovery)" vertex="1">
+          <mxGeometry height="70" width="200" x="20" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="collection" parent="swimlane-platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;fontStyle=1" value="Grounding Collection: Maternal Clinical Guidelines&#xa;&#xa;• NICE NG133 (hypertension in pregnancy)&#xa;• USPSTF (aspirin for preeclampsia)&#xa;• CDC MMWR (GBS prophylaxis)&#xa;• IADPSG 2010 (GDM criteria)&#xa;• WHO 2022 (antenatal corticosteroids)&#xa;&#xa;Vector-embedded (llama-text-embed-v2)&#xa;Retrieved via SearchSources embedded tool" vertex="1">
+          <mxGeometry height="220" width="220" x="260" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="sharp-note" parent="swimlane-platform" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10" value="SHARP-on-MCP headers&#xa;(SMART-on-FHIR lineage)&#xa;&#xa;X-FHIR-Server-URL&#xa;X-FHIR-Access-Token&#xa;X-Patient-ID&#xa;X-API-Key (auth)" vertex="1">
+          <mxGeometry height="130" width="200" x="40" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="llm-note" parent="swimlane-platform" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10" value="LLM (BYO Model)&#xa;&#xa;Claude Sonnet 4.6 (recommended)&#xa;GPT-4o-mini (cheap dev)&#xa;GPT-4.1 / Opus 4.7 (alternates)&#xa;~13-23K tokens per full run" vertex="1">
+          <mxGeometry height="130" width="200" x="260" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="guardrail" parent="swimlane-platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=10;fontStyle=1" value="Guardrail: safety_footer_enforcement&#xa;&#xa;• Agent-type validator (cheap fast model)&#xa;• Rule 1: must end with &quot;Clinician review required&quot;&#xa;• Rule 2: patient values need date or LOINC citation&#xa;• REJECTS uncited clinical claims" vertex="1">
+          <mxGeometry height="150" width="220" x="260" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-prep-guardrail" edge="1" parent="swimlane-platform" source="byo-prep" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="guardrail" value="validate response">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2-TFDjrreXUyn81uw06B-1" edge="1" parent="swimlane-platform" source="byo-prep" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;fontSize=10;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" target="guardrail" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="520" y="360" as="sourcePoint" />
+            <mxPoint x="260" y="596" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-prep-collection" edge="1" parent="swimlane-platform" source="guardrail" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;fontSize=10;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" target="collection" value="SearchSources retrieval (vector)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane-mcp" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=30;fontSize=14;fontStyle=1" value="MaternalGuard MCP Server (TypeScript + Express 5, port 5000)" vertex="1">
+          <mxGeometry height="1040" width="420" x="880" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ngrok" parent="swimlane-mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=center" value="Railway deploy (production) / ngrok (local dev)&#xa;X-API-Key auth when MCP_API_KEY env var is set" vertex="1">
+          <mxGeometry height="50" width="340" x="40" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="express" parent="swimlane-mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;align=center;fontStyle=1" value="Express app&#xa;(stateless, fresh McpServer per request)" vertex="1">
+          <mxGeometry height="50" width="340" x="40" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="route-mcp" parent="swimlane-mcp" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=center" value="POST /mcp&#xa;(Streamable HTTP transport)" vertex="1">
+          <mxGeometry height="50" width="160" x="40" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="route-health" parent="swimlane-mcp" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=center" value="GET /health&#xa;(tool list + status)" vertex="1">
+          <mxGeometry height="50" width="160" x="220" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="tools-header" parent="swimlane-mcp" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1" value="5 MCP Tools (exposed via capabilities.extensions[&quot;ai.promptopinion/fhir-context&quot;])" vertex="1">
+          <mxGeometry height="30" width="340" x="40" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="tool-risk" parent="swimlane-mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8" value="AssessMaternalRisk&#xa;demographics · conditions · vitals · labs · meds&#xa;→ flags high-risk ICD-10 + ACOG PB refs" vertex="1">
+          <mxGeometry height="60" width="360" x="30" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="tool-labs" parent="swimlane-mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8" value="InterpretLabTrends&#xa;longitudinal obs by LOINC · pregnancy reference ranges&#xa;→ trend stats (min/max/mean) + inline interpretation" vertex="1">
+          <mxGeometry height="60" width="360" x="30" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="tool-sdoh" parent="swimlane-mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8" value="ScreenSocialDeterminants&#xa;coverage · address · language · social history&#xa;→ flags barriers (language, insurance, contact)" vertex="1">
+          <mxGeometry height="60" width="360" x="30" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="tool-careplan" parent="swimlane-mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8" value="GenerateCarePlan&#xa;conditions · allergies · meds · existing plans&#xa;→ ACOG screening schedule with PB numbers cited" vertex="1">
+          <mxGeometry height="60" width="360" x="30" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="tool-neonatal" parent="swimlane-mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;fontStyle=1" value="PredictNeonatalImpact&#xa;(mother-baby dyad)&#xa;→ maternal signals mapped to neonatal risks (RDS, NICU, macrosomia, IUGR)&#xa;→ gestational-age-stratified readiness checklist" vertex="1">
+          <mxGeometry height="80" width="360" x="30" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-client" parent="swimlane-mcp" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;spacingLeft=10" value="FHIR R4 HTTP Client (axios)&#xa;reads SHARP headers · calls workspace FHIR endpoint&#xa;US Core profile awareness" vertex="1">
+          <mxGeometry height="70" width="360" x="30" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="security-note" parent="swimlane-mcp" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11;align=left;spacingLeft=10" value="Privacy posture:&#xa;• Read-only FHIR access&#xa;• Stateless (no session)&#xa;• No PHI in logs&#xa;• Tokens scoped to workspace" vertex="1">
+          <mxGeometry height="100" width="360" x="30" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane-fhir" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;startSize=30;fontSize=14;fontStyle=1" value="Workspace FHIR Store (R4)" vertex="1">
+          <mxGeometry height="1040" width="240" x="1440" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-patient" parent="swimlane-fhir" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;fontStyle=1" value="Patient&#xa;(US Core profile)" vertex="1">
+          <mxGeometry height="50" width="180" x="30" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-conditions" parent="swimlane-fhir" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12" value="Condition&#xa;(ICD-10, SNOMED CT)" vertex="1">
+          <mxGeometry height="50" width="180" x="30" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-obs" parent="swimlane-fhir" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12" value="Observation&#xa;(LOINC — vitals, labs, SDOH)" vertex="1">
+          <mxGeometry height="50" width="180" x="30" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-med" parent="swimlane-fhir" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12" value="MedicationRequest&#xa;(RxNorm)" vertex="1">
+          <mxGeometry height="50" width="180" x="30" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-allergy" parent="swimlane-fhir" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12" value="AllergyIntolerance&#xa;(US Core profile)" vertex="1">
+          <mxGeometry height="50" width="180" x="30" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-coverage" parent="swimlane-fhir" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12" value="Coverage&#xa;(Medicaid / commercial)" vertex="1">
+          <mxGeometry height="50" width="180" x="30" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-careplan" parent="swimlane-fhir" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12" value="CarePlan&#xa;(US Core profile)" vertex="1">
+          <mxGeometry height="50" width="180" x="30" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="fhir-bundle" parent="swimlane-fhir" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center" value="Import: FHIR R4 Bundle&#xa;(batch + POST + UUID fullUrl + identifier)" vertex="1">
+          <mxGeometry height="60" width="200" x="20" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-clin-ui" edge="1" parent="1" source="clinician-icon" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;fontSize=11;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="launchpad">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-ui-triage" edge="1" parent="1" source="launchpad" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="byo-triage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-ui-prep" edge="1" parent="1" source="launchpad" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;exitX=0.7;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="byo-prep">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-triage-prep" edge="1" parent="1" source="byo-triage" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;dashed=1;fontSize=10;fontStyle=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="byo-prep" value="A2A&#xa;(skill: generate_prenatal_visit_brief)">
+          <mxGeometry relative="1" x="0.1111" as="geometry">
+            <mxPoint x="1" as="offset" />
+            <Array as="points">
+              <mxPoint x="570" y="220" />
+              <mxPoint x="640" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-prep-mcp" edge="1" parent="1" source="byo-prep" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" target="ngrok" value="POST /mcp&#xa;+ SHARP headers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-ngrok-express" edge="1" parent="1" source="ngrok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="express">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-express-route" edge="1" parent="1" source="express" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="route-mcp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-route-tools" edge="1" parent="1" source="route-mcp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="tool-risk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-tools-client" edge="1" parent="1" source="tool-neonatal" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="fhir-client">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-client-fhir" edge="1" parent="1" source="fhir-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="fhir-conditions" value="FHIR R4 REST&#xa;GET Patient/Condition/Observation/etc">
+          <mxGeometry relative="1" x="0.0149" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-header" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" value="Legend" vertex="1">
+          <mxGeometry height="30" width="100" x="60" y="1140" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-solid" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" value="Solid arrow: synchronous request / response" vertex="1">
+          <mxGeometry height="30" width="320" x="170" y="1140" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-dashed" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" value="Dashed arrow: A2A invocation (workspace-scoped skill discovery)" vertex="1">
+          <mxGeometry height="30" width="500" x="500" y="1140" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
