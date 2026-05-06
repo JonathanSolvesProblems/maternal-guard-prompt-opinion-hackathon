@@ -10,9 +10,9 @@ Before any prompt-level testing, confirm infrastructure is up.
 
 | # | Check | How to verify | Pass criteria |
 |---|---|---|---|
-| 0.1 | Railway deployment is live | Browser → `https://<your-railway-domain>/health` | Returns JSON with `status: "healthy"` and the 5 tool names listed |
-| 0.2 | API key auth is enforced | `curl -X POST https://<your-railway-domain>/mcp -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'` (no `X-API-Key` header) | Returns HTTP 401 with `{"error":{"code":-32001,"message":"Unauthorized: invalid or missing X-API-Key header"}}` |
-| 0.3 | Po MCP server registration is correct | Po → MCP Servers → MaternalGuard | Endpoint = `https://<your-railway-domain>/mcp`; Authentication Type = API Key; Header Name = `X-API-Key`; Header Value matches Railway env var |
+| 0.1 | Railway deployment is live | Browser → `https://promptopinion-hackathon-production.up.railway.app/health` | Returns JSON with `status: "healthy"` and the 5 tool names listed |
+| 0.2 | API key auth is enforced | `curl -X POST https://promptopinion-hackathon-production.up.railway.app/mcp -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'` (no `X-API-Key` header) | Returns HTTP 401 with `{"error":{"code":-32001,"message":"Unauthorized: invalid or missing X-API-Key header"}}` |
+| 0.3 | Po MCP server registration is correct | Po → MCP Servers → MaternalGuard | Endpoint = `https://promptopinion-hackathon-production.up.railway.app/mcp`; Authentication Type = API Key; Header Name = `X-API-Key`; Header Value matches Railway env var |
 | 0.4 | Maria Santos imported | Po → patient picker → search "Santos" | "Santos, Maria Elena" with DOB `1997-08-15` appears |
 | 0.5 | Both agents exist | Po → Agents | `Prenatal Visit Prep` (BYO) and `On-Call OB Triage` (Orchestrator) both listed |
 | 0.6 | Specialist tool config | Prenatal Visit Prep → Tools tab | MaternalGuard MCP attached; "Disable Embedded Tools" = OFF (retrieval depends on this) |

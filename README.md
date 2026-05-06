@@ -150,7 +150,7 @@ For demo / submission, deploying to a hosted platform avoids the need to keep `n
 2. Sign in at [railway.app](https://railway.app) → **New Project → Deploy from GitHub Repo** → select this repo
 3. Railway auto-detects Node.js, runs `npm install`, then `npm start`
 4. Once green, click the service → **Settings → Networking → Generate Domain** to get a public URL
-5. Update the MCP server endpoint in Prompt Opinion to `https://<your-railway-domain>/mcp`
+5. Update the MCP server endpoint in Prompt Opinion to `https://promptopinion-hackathon-production.up.railway.app/mcp` (or whatever public domain Railway assigned to your service)
 
 Railway honors the `PORT` env var automatically (the Express app reads `process.env.PORT`). Free tier with the included healthcheck keeps the service warm — no cold-start lag for live demos.
 
