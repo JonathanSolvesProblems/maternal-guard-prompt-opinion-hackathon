@@ -3,6 +3,7 @@ dist/
 .env
 .env.local
 package-lock.json
+.claude/
 
 # Local-only working files (not for the public repo)
 SUBMISSION.md
