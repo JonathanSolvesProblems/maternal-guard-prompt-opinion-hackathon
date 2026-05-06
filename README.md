@@ -1,8 +1,20 @@
+<div align="center">
+  <img src="docs/maternalguard.png" alt="MaternalGuard logo: pregnant figure with baby silhouette inside a heart shape, EKG line and shield. Tagline: Protecting Two Lives. Mother. Baby. Future." width="240" />
+</div>
+
 # MaternalGuard
 
 An MCP server that surfaces maternal health risk signals from FHIR patient data, built for the [Agents Assemble hackathon](https://agents-assemble.devpost.com/) on the [Prompt Opinion](https://app.promptopinion.ai) healthcare AI platform.
 
-MaternalGuard reads pregnant patients' clinical data (demographics, conditions, vitals, labs, medications, social history, care plans) from a FHIR R4 server and returns it as structured, decision-ready context for the platform's AI to reason over. It does not call any LLM directly — all reasoning happens in Prompt Opinion.
+MaternalGuard reads pregnant patients' clinical data (demographics, conditions, vitals, labs, medications, social history, care plans) from a FHIR R4 server and returns it as structured, decision-ready context for the platform's AI to reason over. It does not call any LLM directly. All reasoning happens in Prompt Opinion.
+
+The full architecture diagram lives at [docs/architecture.drawio](docs/architecture.drawio). Open it at [app.diagrams.net](https://app.diagrams.net) (File, then Open From Device) to explore the swimlanes covering clinician, BYO specialist, Orchestrator, guardrail, A2A, Railway, the 5 MCP tools, the grounded Collection, and the FHIR store with US Core resources.
+
+**Also in this repo:**
+- [docs/TESTING.md](docs/TESTING.md) is a 7-phase verification walkthrough (~30 min) covering pre-flight, per-tool smoke tests, specialist agent, Collection retrieval, A2A orchestration, edge cases, and graceful degradation
+- [docs/VERIFICATION.md](docs/VERIFICATION.md) is the actual test results from running that walkthrough against the production deployment, with prompts, tool calls observed, token counts, and pass/fail per test
+- [test-cases/README.md](test-cases/README.md) explains how to use the synthetic patient and clinical notes
+- [test-cases/clinical-guidelines/README.md](test-cases/clinical-guidelines/README.md) lists the guideline PDFs, source URLs, and licenses
 
 ## Why This Matters
 
@@ -10,14 +22,15 @@ Maternal mortality in the US has been rising for decades. Over 80% of pregnancy-
 
 MaternalGuard gives AI the structured context it needs to connect these dots: flagging that a rising BP trend + new proteinuria + falling platelets = HELLP risk, or that a Spanish-speaking Medicaid patient in a food desert needs interpreter services and WIC continuation alongside her preeclampsia monitoring.
 
-## The 4 Tools
+## The 5 Tools
 
 | Tool | What it does | Key FHIR resources |
 |---|---|---|
-| `AssessMaternalRisk` | Pulls demographics, conditions, vitals, labs, and meds. Flags high-risk ICD-10 codes (O14 preeclampsia, O24 GDM, O10/O11 chronic HTN, E10/E11 diabetes, etc.) and advanced maternal age (>=35). | Patient, Condition, Observation, MedicationRequest |
+| `AssessMaternalRisk` | Pulls demographics, conditions, vitals, labs, and meds. Flags high-risk ICD-10 codes (O14 preeclampsia, O24 GDM, O10/O11 chronic HTN, E10/E11 diabetes, etc.) with ACOG Practice Bulletin references and advanced maternal age (>=35). | Patient, Condition, Observation, MedicationRequest |
 | `ScreenSocialDeterminants` | Pulls insurance, address, contact info, language, and social history observations. Flags barriers: missing coverage, non-English primary language, missing contact info, absent SDOH screening. | Patient, Coverage, Observation (social-history) |
 | `InterpretLabTrends` | Fetches longitudinal labs/vitals by LOINC code. Returns chronological readings with pregnancy-specific reference ranges and trend statistics (min/max/mean). | Observation (by LOINC code) |
-| `GenerateCarePlan` | Pulls conditions, allergies, meds, and existing care plans. Returns ACOG-aligned screening recommendations for the gestational age + a FHIR R4 CarePlan template. | Patient, Condition, AllergyIntolerance, MedicationRequest, CarePlan |
+| `GenerateCarePlan` | Pulls conditions, allergies, meds, and existing care plans. Returns ACOG-aligned screening recommendations (with Practice Bulletin numbers) for the gestational age and risk level. | Patient, Condition, AllergyIntolerance, MedicationRequest, CarePlan |
+| `PredictNeonatalImpact` | **Mother-baby dyad**: maps active maternal conditions and abnormal labs to projected neonatal outcomes (macrosomia, neonatal hypoglycemia, RDS, NICU admission, IUGR, etc.) and returns a gestational-age-specific neonatal readiness checklist. Each risk cites the relevant ACOG Practice Bulletin. | Condition, Observation |
 
 All tools rely on **SHARP-on-MCP** headers (`X-FHIR-Server-URL`, `X-FHIR-Access-Token`, `X-Patient-ID`) which Prompt Opinion forwards automatically when a patient is selected and the agent has Patient Context enabled.
 
@@ -46,42 +59,70 @@ All tools rely on **SHARP-on-MCP** headers (`X-FHIR-Server-URL`, `X-FHIR-Access-
 ## Architecture
 
 ```
-Prompt Opinion (LLM + UI)
-        |  POST /mcp + SHARP headers
-        v
-   ngrok tunnel
-        |
-        v
-  Express server (port 5000)
-        |  fetches via FHIR R4 REST
-        v
-  Workspace FHIR store
+Clinician
+   |
+   v
+Prompt Opinion Platform ──────────── BYO Agents ──────── Guardrail
+   |                                      |                  |
+   |                                      | A2A              | (validates response)
+   |                                      v                  v
+   |                             Other BYO Agents        Safety footer +
+   |                                                      citation rules
+   | POST /mcp + SHARP headers
+   v
+ngrok tunnel
+   |
+   v
+MaternalGuard MCP server (Express, port 5000)
+   |  5 MCP tools
+   v
+FHIR R4 workspace store
 ```
+
+A full visual of the architecture (BYO agents, guardrail, A2A, 5 MCP tools, FHIR resources) is at [docs/architecture.drawio](docs/architecture.drawio). Open it at [app.diagrams.net](https://app.diagrams.net) (File → Open From → Device) or in the VS Code *Draw.io Integration* extension.
 
 - **TypeScript + Express 5** + `@modelcontextprotocol/sdk`
 - Each `/mcp` POST spins up a fresh `McpServer` per request using `StreamableHTTPServerTransport` (stateless mode, no session management)
 - Tools read SHARP context off the inbound request headers, then call the workspace FHIR endpoint with the bearer token
-- The `ai.promptopinion/fhir-context` extension is declared in capabilities so the platform knows to forward FHIR context
+- The `ai.promptopinion/fhir-context` extension is declared in capabilities so the platform knows to forward FHIR context (lineage: SMART-on-FHIR launch-context pattern applied to MCP tool invocations)
+- Two composed agents on the platform: `Prenatal Visit Prep` (BYO Agent — the clinical specialist holding the 5 MaternalGuard MCP tools and grounded guideline Collection) and `On-Call OB Triage` (Orchestrator agent that A2A-delegates clinical workups to Prenatal Visit Prep and wraps the returned brief in a triage disposition)
 
 ## Project layout
 
 ```
-index.ts                          Express server + /mcp + /health endpoints
+index.ts                                  Express server + /mcp + /health endpoints
 src/
   tools/
-    AssessMaternalRiskTool.ts     Risk assessment: conditions, vitals, labs, meds
-    ScreenSocialDeterminantsTool.ts  SDOH screening: insurance, language, social hx
-    InterpretLabTrendsTool.ts     Lab trends with pregnancy reference ranges
-    GenerateCarePlanTool.ts       Care plan: allergies, meds, ACOG schedule
-    index.ts                      Tool barrel export
-  fhir-client.ts                  FHIR R4 HTTP client (uses SHARP headers)
-  fhir-utilities.ts               Extracts SHARP context from request headers
-  fhir-context.ts                 FhirContext type definition
-  mcp-constants.ts                Header name constants
-  mcp-utilities.ts                Response helpers (text + JSON)
-  null-utilities.ts               Null-safe helpers
-  IMcpTool.ts                     Tool interface
-test-patient-maria-santos.json    Sample FHIR bundle (see Test Patient section)
+    AssessMaternalRiskTool.ts             Risk assessment: conditions, vitals, labs, meds
+    ScreenSocialDeterminantsTool.ts       SDOH screening: insurance, language, social hx
+    InterpretLabTrendsTool.ts             Lab trends with pregnancy reference ranges
+    GenerateCarePlanTool.ts               Care plan: allergies, meds, ACOG schedule
+    PredictNeonatalImpactTool.ts          Mother-baby dyad: neonatal risk projections
+    index.ts                              Tool barrel export
+  fhir-client.ts                          FHIR R4 HTTP client (uses SHARP headers)
+  fhir-utilities.ts                       Extracts SHARP context from request headers
+  fhir-context.ts                         FhirContext type definition
+  mcp-constants.ts                        Header name constants
+  mcp-utilities.ts                        Response helpers (text + JSON)
+  null-utilities.ts                       Null-safe helpers
+  IMcpTool.ts                             Tool interface
+docs/
+  architecture.drawio                     Full architecture diagram (draw.io / diagrams.net)
+test-cases/
+  README.md                               How to use the test data
+  patient-maria-santos-bundle.json        Sample FHIR bundle (40+ resources)
+  documents/
+    maria-santos/                         Optional clinical notes for UI upload
+      prenatal-visit-note-2026-04-04.md
+      mfm-consult-note-2026-03-21.md
+      prior-delivery-discharge-summary-2023-06-10.md
+  clinical-guidelines/                    Curated PDFs for Po Collection (vector grounding)
+    README.md                             Per-file source + attribution
+    nice-ng133-hypertension-in-pregnancy.pdf
+    uspstf-aspirin-preeclampsia-2021.pdf
+    cdc-gbs-prevention-mmwr-2010.pdf
+    iadpsg-gdm-criteria-2010.pdf
+    who-antenatal-corticosteroids-2022.pdf
 ```
 
 ## Running locally
@@ -90,7 +131,7 @@ You'll need Node.js 18+ and a free [ngrok](https://ngrok.com/) account.
 
 ```bash
 npm install
-npx tsx index.ts          # starts on port 5000
+npm start          # starts on port 5000
 ```
 
 In a second terminal:
@@ -100,6 +141,18 @@ npx ngrok http 5000
 ```
 
 Copy the `https://<random>.ngrok-free.app` URL. The MCP endpoint is `https://<random>.ngrok-free.app/mcp`.
+
+## Deploying to Railway (production)
+
+For demo / submission, deploying to a hosted platform avoids the need to keep `npm start` and `ngrok` running locally. The repo includes a [`railway.json`](railway.json) that configures Railway to run the Express server with a health-check on `/health`.
+
+1. Push the repo to GitHub
+2. Sign in at [railway.app](https://railway.app) → **New Project → Deploy from GitHub Repo** → select this repo
+3. Railway auto-detects Node.js, runs `npm install`, then `npm start`
+4. Once green, click the service → **Settings → Networking → Generate Domain** to get a public URL
+5. Update the MCP server endpoint in Prompt Opinion to `https://<your-railway-domain>/mcp`
+
+Railway honors the `PORT` env var automatically (the Express app reads `process.env.PORT`). Free tier with the included healthcheck keeps the service warm — no cold-start lag for live demos.
 
 ## Setting up in Prompt Opinion
 
@@ -112,28 +165,60 @@ Copy the `https://<random>.ngrok-free.app` URL. The MCP endpoint is `https://<ra
 
 ### 2. Import the test patient (Maria Santos)
 
-The included `test-patient-maria-santos.json` is a FHIR R4 batch bundle with a 28-year-old pregnant patient at 32 weeks gestation, designed to exercise all 4 tools.
+The file [test-cases/patient-maria-santos-bundle.json](test-cases/patient-maria-santos-bundle.json) is a FHIR R4 batch bundle with a 28-year-old pregnant patient at 32 weeks gestation, designed to exercise all 5 tools.
 
 - **FHIR Bundle Import -> Upload File**
-- Select `test-patient-maria-santos.json`
+- Select `test-cases/patient-maria-santos-bundle.json`
 - Wait for the success message
 - **Maria Elena Santos** (DOB 1997-08-15) should appear in the patient list
 
+See [test-cases/README.md](test-cases/README.md) for the full patient scenario summary.
+
 > **Bundle format notes:** Every entry has a real-UUID `fullUrl`, requests use `POST` (not `PUT`), and the Patient has an `identifier` array. These are platform requirements.
 
-### 3. Set up a BYO Agent
+### 2a. (Optional) Upload clinical documents for extra demo realism
 
-- **Agents -> New BYO Agent**
-- **Tools / MCP servers:** attach your MaternalGuard MCP server
-- **Patient Context:** enabled
-- **Workspace Context:** enabled
+The [test-cases/documents/maria-santos/](test-cases/documents/maria-santos/) folder contains three narrative clinical notes — a prenatal visit note from 2026-04-04, an MFM consult from 2026-03-21, and a discharge summary from her prior 2023 preterm delivery. These give the patient chart a lived-in feel during the demo. Upload via the patient's **Upload Document** feature on their Patient Info page.
+
+> Note: these are display-only; MaternalGuard tools read structured FHIR resources (Condition, Observation, etc.) from the FHIR bundle, not uploaded documents. They're for visual demo fidelity.
+
+### 3. Set up the agents
+
+Create **two** agents in the Prompt Opinion platform:
+
+**(a) Prenatal Visit Prep — BYO Agent (the clinical specialist)**
+- **Agents → New BYO Agent**
+- **Allowed Contexts:** Workspace, Patient
+- **Tools / MCP servers:** attach MaternalGuard
+- **Disable Embedded Tools:** OFF (retrieval depends on embedded tools)
+- **Document Sources:** attach the `Maternal Clinical Guidelines` Collection (see [Clinical grounding via Prompt Opinion Collection](#clinical-grounding-via-prompt-opinion-collection))
+- **A2A Availability:** ON + Skill `generate_prenatal_visit_brief`
+- **FHIR Context Extension:** ON (Required)
+- Paste in the system + consultation prompts from the [Specialist BYO Agent section](#specialist-byo-agent-prenatal-visit-prep)
+- Save
+
+**(b) On-Call OB Triage — Orchestrator Agent (the router)**
+- **Agents → New Orchestrator Agent** (not BYO)
+- **Allowed Contexts:** Workspace, Patient
+- **Linked Agents:** add `Prenatal Visit Prep` as a sub-agent
+- **No MCP servers attached**
+- **Disable Embedded Tools:** OFF (orchestrator needs `SendAgentMessage`)
+- **A2A Availability:** ON + Skill `triage_pregnancy_concern`
+- **FHIR Context Extension:** ON (Required)
+- Paste in the system + consultation prompts from the [Orchestrator Agent section](#orchestrator-agent-on-call-ob-triage)
 - Save
 
 ### 4. Select a patient and run prompts
 
-Select **Maria Santos** from the patient picker, then launch the BYO agent and run the test cases below.
+Select **Maria Santos** from the patient picker. Then either:
+- Launch `Prenatal Visit Prep` directly for thorough pre-visit briefs
+- OR launch `On-Call OB Triage` (orchestrator) for acute triage — at the chat interface, set the **"Consult with another agent"** dropdown to `Prenatal Visit Prep` to activate delegation; the orchestrator will A2A-invoke the specialist and wrap its brief in a disposition
 
 ## Test Patient: Maria Elena Santos
+
+Bundle: [test-cases/patient-maria-santos-bundle.json](test-cases/patient-maria-santos-bundle.json)
+Clinical notes (optional UI upload): [test-cases/documents/maria-santos/](test-cases/documents/maria-santos/)
+Full scenario write-up: [test-cases/README.md](test-cases/README.md)
 
 **Demographics:** 28yo Hispanic/Latina female, married, Chicago IL, primary language Spanish, Medicaid
 
@@ -274,8 +359,7 @@ Use the GenerateCarePlan tool to create a prenatal care plan for this patient. R
   - More frequent BP monitoring
   - Serial growth ultrasounds every 3-4 weeks
   - Consider antenatal corticosteroids counseling if <34 weeks
-- **ACOG guidelines:** High-risk visit schedule (every 1-2 weeks), standard prenatal labs listed
-- **FHIR CarePlan template:** Provided for the AI to populate with activities
+- **Care plan guideline source:** `ACOG` (the LLM applies its own ACOG knowledge from training)
 
 **What the AI should reason about:**
 - Existing care plan is already in place — AI should build on it, not start from scratch
@@ -310,7 +394,37 @@ Use all available MaternalGuard tools.
 
 ---
 
-### Test 6: Minimal patient (judges testing with other patients)
+### Test 6: PredictNeonatalImpact (mother-baby dyad)
+
+**Prompt:**
+```
+Use the PredictNeonatalImpact tool with gestationalAgeWeeks 32 to brief the NICU team on what to prepare for.
+```
+
+**Expected results with Maria Santos:**
+- **Prematurity band:** Moderate preterm (32-33 weeks) — RDS risk, feeding immaturity, NICU observation likely — cites ACOG PB #234.
+- **Maternal risk drivers mapped to neonatal outcomes:**
+  - Preeclampsia (O14.00) → iatrogenic preterm delivery, IUGR, NICU admission risk — ACOG PB #222
+  - GDM (O24.410) → macrosomia, neonatal hypoglycemia, RDS, hyperbilirubinemia — ACOG PB #190
+  - History of preterm birth → recurrent preterm risk, RDS/IVH if <34w — ACOG PB #234
+  - Platelets 141 (below 150K) → possible neonatal thrombocytopenia, HELLP pattern
+  - AST 54 (above 40) → HELLP concern, preterm delivery likely
+  - Hemoglobin 10.9 → low birth weight association
+- **Neonatal readiness checklist:**
+  - Counsel on antenatal corticosteroids (ACOG PB #234) if delivery anticipated within 7 days
+  - Notify neonatology team of possible preterm delivery and IUGR risk
+  - Newborn blood glucose monitoring protocol (first 24-48 hours)
+  - Prepare for possible macrosomia / shoulder dystocia if EFW >4000g
+  - NICU level assessment — Level III minimum for <32w, Level II acceptable for 32-34w
+
+**What the AI should reason about:**
+- The mother-baby dyad is one clinical unit, not two. Maternal deterioration drives neonatal prep.
+- ACOG PB #234 corticosteroid window closes at 34 weeks — this patient is still eligible at 32 weeks if delivery anticipated.
+- Magnesium sulfate neuroprotection is eligible <32 weeks — patient has just crossed that threshold; document clearly.
+
+---
+
+### Test 7: Minimal patient (judges testing with other patients)
 
 MaternalGuard works with **any** patient in the workspace — not just Maria. When tested with a patient that has minimal data (e.g., the built-in sample patients):
 
@@ -318,17 +432,465 @@ MaternalGuard works with **any** patient in the workspace — not just Maria. Wh
 - `ScreenSocialDeterminants` will flag missing insurance, missing social history screening, and missing contact info as barriers
 - `InterpretLabTrends` will return "No observation data found" — this is correct, not an error
 - `GenerateCarePlan` will return minimal conditions and suggest determining gestational age to guide screening schedule
+- `PredictNeonatalImpact` will return "Standard newborn readiness — no elevated neonatal risk drivers detected from maternal data"
 
 This graceful degradation is by design — the tools report what data exists and flag what's missing, rather than failing.
 
 ---
 
+## Specialist BYO Agent: "Prenatal Visit Prep"
+
+The clinical heavy-lifter. A BYO Agent that composes all 5 MaternalGuard MCP tools with the grounded clinical-guidelines Collection into a single consolidated pre-visit brief.
+
+**Agent name:** `Prenatal Visit Prep`
+**Agent type:** BYO Agent
+
+**Description:**
+```
+High-risk OB pre-visit brief agent. Orchestrates 5 MaternalGuard MCP tools to deliver a clinician-ready workup covering maternal risk, longitudinal lab trends, SDOH barriers, ACOG care-plan gaps, and neonatal/NICU readiness (mother-baby dyad) for pregnant patients. Decision support only — clinician review required.
+```
+
+**Allowed contexts:** Workspace, Patient
+
+**Timeout:** 120 seconds
+
+**Model:** `claude-sonnet-4-6` (200K context, strong clinical reasoning, ~$0.05 per brief) OR `gpt-4.1` / `gpt-4o`. Model must handle 15K+ input tokens to fit all 5 tool outputs + retrieved Collection passages + synthesis.
+
+**Attached MCP servers:** MaternalGuard (all 5 tools)
+
+**Tools config:** Leave `Disable Embedded Tools` **OFF** — embedded tools include Po's `SearchSources` retrieval tool which the grounding Collection needs to function. Toggling it ON silently breaks retrieval.
+
+**Document Sources:** Workspace Collection → `Maternal Clinical Guidelines` (see [Clinical grounding via Prompt Opinion Collection](#clinical-grounding-via-prompt-opinion-collection))
+
+**System prompt:**
+
+```
+{{ PatientContextFragment }}
+
+{{ PatientDataFragment }}
+
+{{ McpAppsFragment }}
+
+## Your primary instructions:
+---
+You are a high-risk OB pre-visit briefing assistant preparing a clinician for their next prenatal visit. You have two data sources:
+
+1. **MaternalGuard MCP tools** — patient-specific FHIR data (demographics, conditions, vitals, labs, meds, care plans, neonatal risk projection)
+2. **Attached grounding collection** — curated public-domain clinical guidelines (NICE NG133, USPSTF aspirin-for-preeclampsia, CDC GBS, IADPSG 2010 GDM, WHO 2022 antenatal corticosteroids). Retrieve from these whenever a recommendation or threshold would be grounded by an external guideline.
+
+For every clinical question about the selected patient, call all five MaternalGuard tools in this order:
+
+1. AssessMaternalRisk        — baseline clinical picture and risk flags
+2. InterpretLabTrends        — longitudinal lab/vital trajectories
+3. ScreenSocialDeterminants  — access, language, SDOH barriers
+4. GenerateCarePlan          — existing plan, allergies, ACOG schedule gaps
+5. PredictNeonatalImpact     — neonatal/mother-baby dyad risk implications
+
+In parallel, retrieve from the grounding collection any passages relevant to the patient's conditions (preeclampsia, GDM, preterm risk, antenatal corticosteroids, GBS prophylaxis).
+
+Then produce a single consolidated brief with these sections:
+- **Headline risk** (one sentence — the single most urgent clinical issue for mother AND baby)
+- **Trajectory** (what the labs+vitals trend is telling us, not just point values)
+- **Contributing SDOH** (how social barriers compound the clinical risk)
+- **Care plan gaps** (what's missing vs. what ACOG recommends at this gestational age)
+- **Neonatal / NICU readiness** (projected newborn risks and preparation needs)
+- **Recommended next actions** (ranked, with specific ACOG Practice Bulletin numbers cited, plus a direct quote from a grounding document when available)
+
+Rules:
+- When calling InterpretLabTrends, GenerateCarePlan, or PredictNeonatalImpact, always compute and pass gestationalAgeWeeks from the pregnancy condition (Z34.XX code suffix or onsetDateTime) or from existing care plan notes.
+- Cite specific data points (values, dates, LOINC codes) that support each claim.
+- Cite the specific ACOG Practice Bulletin number when recommending care (e.g., PB #222 for preeclampsia, PB #190 for GDM, PB #234 for antenatal corticosteroids, PB #713 for late-preterm steroids, PB #797 for GBS prophylaxis, PB #201 for pregestational diabetes).
+- When a grounding document in the collection (NICE NG133, USPSTF, CDC, IADPSG, WHO) supports a claim, quote the relevant passage directly and reference the document name. Prefer quoted passages from grounded documents over general clinical recall when available.
+- When multiple abnormal findings form a clinical pattern (e.g., HELLP trifecta: rising AST + falling platelets + elevated uric acid + rising proteinuria), report the pattern, not just one finding.
+- If a value is within normal range but trending toward abnormal, say so — trajectory matters.
+- Flag any penicillin/drug allergy interactions for upcoming standard-of-care medications (e.g., GBS prophylaxis at 36w — per ACOG PB #797, cefazolin for low-severity PCN allergy, clindamycin/vancomycin for anaphylactic PCN allergy).
+- Do NOT recommend actions the tools already show are in place — build on the existing care plan.
+- Explicitly connect maternal findings to neonatal outcomes (e.g., rising GDM glucose → macrosomia/hypoglycemia risk; severe preeclampsia → iatrogenic preterm delivery → NICU admission).
+- This is decision support only. End with: "Clinician review required before any action."
+```
+
+**Consultation prompt** (used when the agent is invoked via A2A by another agent):
+
+```
+{{ PatientContextFragment }}
+
+{{ PatientDataFragment }}
+
+{{ McpAppsFragment }}
+
+{{ ExternalAgentContextFragment }}
+
+{{ A2ATaskInfoFragment }}
+
+## Your primary instructions:
+---
+You are the Prenatal Visit Prep agent, invoked by another agent for a specific clinical question about a pregnant patient. FHIR patient context is provided via SHARP headers. You have two data sources:
+
+1. **MaternalGuard MCP tools** — patient-specific FHIR data
+2. **Attached grounding collection** — curated public-domain clinical guidelines (NICE NG133, USPSTF, CDC GBS, IADPSG 2010 GDM, WHO 2022 antenatal corticosteroids)
+
+Workflow:
+1. Call AssessMaternalRisk, InterpretLabTrends, ScreenSocialDeterminants, GenerateCarePlan, and PredictNeonatalImpact. Pass gestationalAgeWeeks computed from the pregnancy condition (Z34.XX) when available.
+2. In parallel, retrieve from the grounding collection any passages relevant to the caller's question.
+3. Answer the calling agent's question directly and concisely, grounded in the tool outputs and retrieved guideline passages.
+4. Cite specific values, dates, LOINC codes, and ACOG Practice Bulletin numbers supporting each claim. When a grounding document supports a claim, quote the passage and reference the document name — prefer quoted passages over general clinical recall.
+5. When multiple abnormal findings form a clinical pattern (e.g., HELLP trifecta), report the full pattern to the caller.
+6. If the question involves medications or screenings, flag any drug-allergy conflicts from the patient's AllergyIntolerance data (e.g., penicillin → cefazolin for low-severity PCN allergy per ACOG PB #797; clindamycin/vancomycin for anaphylactic PCN allergy).
+7. If the question is pediatric/NICU oriented, lead with the PredictNeonatalImpact output.
+8. If data is insufficient to answer safely, say so explicitly and describe what is missing.
+
+This is decision support only. Always end with: "Clinician review required before any action."
+```
+
+**A2A configuration:**
+
+- **Enable A2A Availability:** ON (required for marketplace publish)
+- **Enable FHIR Context Extension:** ON
+- **FHIR Context Extension Required:** ON (tools cannot operate without FHIR context)
+- **Skill:** `generate_prenatal_visit_brief`
+
+**Skill description:**
+```
+Generates a comprehensive pre-visit clinician brief for a pregnant patient by orchestrating 5 FHIR-backed MCP tools (maternal risk assessment, longitudinal lab trend analysis, SDOH barrier screening, ACOG care-plan gap analysis, and neonatal impact prediction). Returns a single consolidated report with headline risk, trajectory analysis, contributing SDOH factors, care plan gaps, neonatal/NICU readiness, and ranked recommended actions with ACOG Practice Bulletin citations. Decision support only.
+```
+
+One prompt to this agent → 5 MCP tool calls + `SearchSources` retrieval from the guideline Collection → one synthesized clinician-ready brief that covers both mother and baby.
+
+---
+
+## Orchestrator Agent: "On-Call OB Triage"
+
+The hackathon explicitly rewards **agent composition** — agents calling other agents via A2A. On-Call OB Triage is a Prompt Opinion **Orchestrator agent** (not a regular BYO Agent) whose sole job is to delegate clinical workups to `Prenatal Visit Prep` via A2A and wrap the returned brief in a triage disposition. This is two-level composition: user → Orchestrator → BYO specialist → 5 MCP tools + guideline Collection retrieval → brief flows back up the stack.
+
+**Agent name:** `On-Call OB Triage`
+**Agent type:** **Orchestrator** (not BYO Agent)
+
+**Description:**
+```
+Acute OB triage assistant for pregnant patients. Composes the Prenatal Visit Prep specialist agent via A2A to ground triage disposition in current FHIR data and ACOG-cited guideline evidence. Returns one of four dispositions (reassurance / office visit / L&D evaluation / emergency) with driving findings and a language-appropriate patient-facing summary. Decision support only.
+```
+
+**Allowed contexts:** Workspace, Patient
+
+**Timeout:** 120 seconds
+
+**Model:** Same class as Prenatal Visit Prep (`claude-sonnet-4-6` recommended). Orchestrator input includes the full downstream brief embedded into context, so allow headroom.
+
+**Linked Agents (critical):** Add `Prenatal Visit Prep` as a linked sub-agent. Without this, the orchestrator has nothing to route to and the LLM falls back to hallucinating agent IDs for `SendA2AMessage`.
+
+**Tools config:**
+- Leave `Disable Embedded Tools` **OFF** — the orchestrator needs `SendAgentMessage` (or equivalent) to invoke the linked sub-agent
+- No MCP servers attached directly — all clinical tools live on the sub-agent
+- The explicit system-prompt rule below prevents the orchestrator from short-circuiting to `GetPatientData` / `GetPatientDocuments` instead of delegating
+
+**Document Sources:** None. Orchestrators cannot be attached to Collections directly — the grounding Collection lives on Prenatal Visit Prep (the specialist), and its retrieval output propagates up through the A2A delegation chain.
+
+**System prompt:**
+
+```
+{{ PatientContextFragment }}
+
+{{ PatientDataFragment }}
+
+{{ McpAppsFragment }}
+
+{{ OrchestratorAgentsFragment }}
+
+{{ A2ATaskInfoFragment }}
+
+## Your primary instructions:
+---
+You are an on-call OB triage assistant. Your sole job is to:
+  (a) delegate the clinical workup to the Prenatal Visit Prep specialist agent, and
+  (b) wrap its FHIR-grounded brief in a triage disposition.
+
+You do NOT perform clinical analysis directly. You are a router + disposition formatter.
+
+## Delegation rules (critical)
+
+For EVERY clinical triage question about the selected patient, you MUST delegate to the Prenatal Visit Prep agent listed in your orchestrator agents. The Prenatal Visit Prep agent:
+- Calls the MaternalGuard MCP tools (AssessMaternalRisk, InterpretLabTrends, ScreenSocialDeterminants, GenerateCarePlan, PredictNeonatalImpact)
+- Retrieves evidence from the attached clinical guidelines collection (NICE NG133, USPSTF, CDC GBS, IADPSG, WHO)
+- Returns a structured 6-section brief with ACOG Practice Bulletin citations
+
+DO NOT use embedded tools like GetPatientData, GetPatientDocuments, or any direct FHIR lookups for clinical triage. They lack the structured maternal risk analysis, guideline grounding, and ACOG citations that Prenatal Visit Prep provides. If you find yourself about to call GetPatientData or GetPatientDocuments for clinical reasoning, stop and delegate to Prenatal Visit Prep instead.
+
+DO NOT fabricate agent IDs for SendA2AMessage. Use only the real agent IDs exposed via the orchestrator agents fragment above, or rely on the platform's consult mechanism when the user has set the "Consult with another agent" dropdown.
+
+## Workflow
+
+1. Acknowledge the inbound concern in one sentence.
+2. Delegate to Prenatal Visit Prep — pass the concern as the free-text message along with any relevant context (symptom, timing, severity words from the user).
+3. Wait for Prenatal Visit Prep's brief to appear in your context.
+4. From that brief, extract the 1-2 most urgent findings (with values, dates, and LOINC codes or ACOG PB citations). When multiple abnormal findings form a clinical pattern (e.g., HELLP trifecta: rising AST + falling platelets + elevated uric acid + rising proteinuria), surface the full constellation — clinicians need the pattern, not just the headline.
+5. Produce a TRIAGE DISPOSITION in one of:
+   - REASSURANCE — no urgent findings; continue routine care
+   - OFFICE VISIT — schedule within 48-72 hours
+   - L&D EVALUATION — send to Labor & Delivery today
+   - EMERGENCY — call 911 / immediate transfer (severe-range BP ≥160/110 per NICE NG133, HELLP features, active bleeding, decreased fetal movement with warning signs, severe preeclampsia features)
+6. State the 1-2 specific findings from the brief that drove the disposition. Quote the values, dates, and sources exactly as Prenatal Visit Prep reported them.
+7. If the patient's primary language (per SDOH data in the brief) is not English, include a one-sentence plain-language disposition summary in the patient's primary language, directed at the patient. Translate medical location names precisely — e.g., in Spanish "Labor & Delivery" is "sala de labor y parto" or "sala de partos" (NEVER "laboratorio", which means testing laboratory). Keep the sentence direct and patient-facing, not a clinical-note translation. Omit this step if the patient's primary language is English or unknown.
+8. End with: "Clinician review required before any action."
+
+If Prenatal Visit Prep returns an error or no data, say so explicitly and produce a protocol-based disposition with the caveat that it is NOT FHIR-grounded — do not fill the gap with embedded-tool data.
+```
+
+**Consultation prompt** (used when the Orchestrator is itself called via A2A by yet another upstream agent):
+
+```
+{{ PatientContextFragment }}
+
+{{ PatientDataFragment }}
+
+{{ McpAppsFragment }}
+
+{{ OrchestratorAgentsFragment }}
+
+{{ ExternalAgentContextFragment }}
+
+{{ A2ATaskInfoFragment }}
+
+## Your primary instructions:
+---
+You are the On-Call OB Triage agent, invoked by another agent (via A2A) for acute symptom triage of a pregnant patient. FHIR context is provided via SHARP headers.
+
+Your sole job is to:
+  (a) delegate the clinical workup to the Prenatal Visit Prep specialist agent listed in your orchestrator agents, and
+  (b) return a triage disposition wrapped around its FHIR-grounded brief.
+
+## Rules
+
+- DO delegate to Prenatal Visit Prep for every clinical triage concern. That agent has the MaternalGuard MCP tools and the grounded clinical-guidelines collection.
+- DO NOT use embedded tools like GetPatientData or GetPatientDocuments for clinical reasoning — they bypass the specialist agent's structured analysis, grounding, and ACOG citations.
+- DO NOT fabricate agent IDs for SendA2AMessage. Use only the real agent IDs from the orchestrator agents fragment.
+- DO quote the exact values, dates, LOINC codes, and ACOG Practice Bulletin numbers from the specialist brief — do not paraphrase.
+
+## Workflow
+
+1. Interpret the calling agent's concern (symptom, timing, severity).
+2. Delegate to Prenatal Visit Prep with that concern as the message.
+3. Wait for the FHIR-grounded brief.
+4. Return a TRIAGE DISPOSITION (REASSURANCE / OFFICE VISIT / L&D EVALUATION / EMERGENCY) with the 1-2 specific findings that drove it, quoting values + dates + sources exactly as reported. When multiple abnormal findings form a clinical pattern (e.g., HELLP trifecta: rising AST + falling platelets + elevated uric acid), report the pattern, not just one finding.
+5. If the patient's primary language (per SDOH data in the brief) is not English, include a one-sentence plain-language disposition summary in the patient's primary language, directed at the patient. Translate medical location names precisely (e.g., Spanish "Labor & Delivery" → "sala de labor y parto" or "sala de partos", NEVER "laboratorio"). Omit if primary language is English or unknown.
+6. End with: "Clinician review required before any action."
+
+If Prenatal Visit Prep returns an error, report the error explicitly to the calling agent — do not invent data or fall back to embedded tools.
+```
+
+**A2A configuration:**
+
+- **Enable A2A Availability:** ON
+- **Enable FHIR Context Extension:** ON
+- **FHIR Context Extension Required:** ON
+- **Skill:** `triage_pregnancy_concern`
+
+**Skill description:**
+```
+Triages an acute pregnancy-related concern (symptom, question, or inbound call) for a pregnant patient and returns a disposition (REASSURANCE / OFFICE VISIT / L&D EVALUATION / EMERGENCY) with rationale. Internally composes the Prenatal Visit Prep agent via A2A to ground the triage decision in current FHIR data and clinical guidelines. Includes a language-appropriate patient-facing disposition summary when the patient's primary language is non-English. Decision support only.
+```
+
+This agent adds no MCP tools of its own — it composes `Prenatal Visit Prep` (which composes 5 MaternalGuard tools + guideline retrieval) into a call-center triage workflow. Two-level agent composition on top of FHIR, all via open standards (MCP + A2A + SHARP + FHIR R4 + US Core).
+
+---
+
+## Safety, privacy, and failure modes
+
+Clinical AI submissions that don't address safety get dinged fast. Here's how MaternalGuard is designed.
+
+### What these tools explicitly do NOT do
+- **No dosing recommendations.** Tools surface current medications but never suggest doses or new prescriptions.
+- **No imaging interpretation.** Ultrasound findings (e.g., IUGR) are read from existing FHIR Observations/Conditions; the tools do not interpret raw images.
+- **No final diagnosis.** Every output is framed as decision support over structured data, not diagnosis.
+- **No autonomous actions.** Read-only FHIR access. No writes, no orders placed, no messages sent to patients.
+
+### Privacy architecture
+- **SHARP-on-MCP (SMART-on-FHIR lineage).** Patient context is forwarded per-request as headers (`X-FHIR-Server-URL`, `X-FHIR-Access-Token`, `X-Patient-ID`). The MCP server holds no session state.
+- **Workspace-scoped tokens.** Tokens are issued by the Prompt Opinion workspace; our server never sees credentials outside a request boundary.
+- **No PHI in logs.** Structured logging records only `method`, header presence booleans, tool name, and non-PHI arguments. Patient ID is the FHIR UUID (already an internal identifier).
+- **Stateless transport.** `StreamableHTTPServerTransport` with `sessionIdGenerator: undefined` — each request spins up a fresh `McpServer` that's closed on response end.
+
+### Failure modes and graceful degradation
+| Failure | Behavior |
+|---|---|
+| Patient has no conditions | Risk flags empty; demographic risk (advanced maternal age) still surfaces |
+| Patient has no labs | `InterpretLabTrends` returns "No observation data found" — AI reasons about the absence |
+| No FHIR context (SHARP headers missing) | Tools return a structured error immediately; LLM is instructed to say so |
+| FHIR server returns 404 for patient | Graceful "patient not found" response |
+| Gestational age unknown | `GenerateCarePlan` returns "Determine gestational age to guide schedule" instead of guessing |
+| LLM invents a fact | System prompt requires citations (values + dates + LOINC codes + ACOG PB numbers). Uncited claims are visible as suspect |
+| Allergy missed | `GenerateCarePlan` returns the `AllergyIntolerance` list explicitly; system prompt rule forces allergy-cross-reference before recommending GBS/antibiotic steps |
+
+### Human-in-the-loop is structural, not advisory
+- Every tool response carries a one-line disclaimer.
+- Every composed brief ends with `"Clinician review required before any action."` — enforced by system prompt AND by a platform-level guardrail (see below).
+
+### Platform-level guardrail
+
+A **Prompt Opinion Agent-type guardrail** named `safety_footer_enforcement` is attached to `Prenatal Visit Prep`. It runs on every model response (a second, cheaper LLM validates before the brief reaches the clinician) and enforces two rules:
+
+1. **Safety footer present.** Every response must end with "Clinician review required before any action." If it doesn't, the response is REJECTED.
+2. **Citation discipline.** Any patient-specific numeric claim (a value like `BP 148/95` or `AST 54 U/L`) must be accompanied by either a date or a LOINC code. Generic clinical knowledge ("preeclampsia often presents with hypertension") does not require a citation.
+
+This moves safety from "we prompted the model to be safe" to "a second model structurally validates every response." Guardrail configuration — validator model, type, validation instruction — lives in the Prompt Opinion agent configuration, not in this repo. Validation cost is trivial (~$0.001 per check on a cheap model like Haiku 4.5).
+
+**Why it's attached to Prenatal Visit Prep specifically:** this agent does the heaviest clinical reasoning and produces the structured brief. On-Call OB Triage inherits the safety posture transitively — its disposition is grounded in whatever Prenatal Visit Prep (or the MaternalGuard tools directly) returned.
+
+---
+
+## Clinical grounding via Prompt Opinion Collection
+
+Beyond inline ACOG Practice Bulletin citations in the agent output, `Prenatal Visit Prep` is grounded in a curated Prompt Opinion **Collection** of publicly-available clinical guidelines. Po embeds these PDFs into a vector index at upload; at runtime the agent calls its `SearchSources` embedded tool to retrieve passages in-context so clinical claims are sourced from the guideline text itself, not LLM training recall. Retrieved evidence propagates up through A2A to the Orchestrator agent (On-Call OB Triage) when it invokes the specialist — so triage dispositions inherit the grounded citations.
+
+> **Collection attachment scope:** Po Orchestrator agents cannot have a Collection attached directly — the Document Sources / Content tab is only available on BYO Agents. Attach the Collection only to `Prenatal Visit Prep` (the specialist). Retrieval from that Collection still reaches the orchestrator transitively via the A2A brief propagation.
+
+> **Critical toggle:** Collection retrieval is implemented as an embedded tool (`SearchSources`). On the specialist agent, leave **Disable Embedded Tools OFF** — toggling it ON silently breaks retrieval, and the LLM will fall back to hallucinating guideline content.
+
+The guideline corpus (checked into [test-cases/clinical-guidelines/](test-cases/clinical-guidelines/)):
+
+| Source | Topic | License |
+|---|---|---|
+| **NICE NG133** — Hypertension in pregnancy | Preeclampsia and gestational HTN diagnosis + management, 61 pp | Crown copyright, reusable for non-commercial decision support |
+| **USPSTF** — Low-dose aspirin to prevent preeclampsia (2021) | Aspirin 81 mg starting at 12w for high-risk patients | US federal government, public domain |
+| **CDC MMWR** — Prevention of perinatal Group B strep | GBS screening + intrapartum antibiotic prophylaxis (referenced by ACOG PB #797) | US federal government, public domain |
+| **IADPSG 2010 consensus paper** — GDM diagnostic criteria | Fasting ≥92 / 1-hr ≥180 / 2-hr ≥153 mg/dL OGTT thresholds | CC open access via PMC |
+| **WHO 2022** — Antenatal corticosteroids for preterm birth | Betamethasone / dexamethasone timing for <34w delivery (aligned with ACOG PB #234) | CC BY-NC-SA 3.0 IGO |
+
+**ACOG Practice Bulletin PDFs are intentionally NOT included** — they are copyrighted behind paywall. The agent references PB numbers (#222 preeclampsia, #190 GDM, #234 antenatal corticosteroids, #713 late-preterm steroids, #797 GBS prophylaxis, #201 pregestational diabetes) by citation; the grounded source text above aligns with current ACOG guidance without reproducing ACOG material. See [test-cases/clinical-guidelines/README.md](test-cases/clinical-guidelines/README.md) for per-file source URLs, licensing notes, and Collection attachment steps.
+
+## Clinical workflow integration
+
+MaternalGuard is designed to drop into existing clinician workflows, not create a new portal.
+
+**When it runs:**
+- **Morning huddle (OB team).** The attending runs Prenatal Visit Prep on the day's high-risk panel before rounding. Brief is 1-2 paragraphs per patient; reviewed in the same 15-minute huddle already happening.
+- **Pre-visit chart prep.** Clinic medical assistant or scribe runs the agent 10 minutes before the visit, posts the brief to the encounter summary, and the clinician walks in primed.
+- **MFM (Maternal-Fetal Medicine) consult.** When the OB escalates to MFM, the MFM agent can A2A-call `Prenatal Visit Prep` to ingest the full context instead of re-reading the chart.
+- **After-hours triage.** The `On-Call OB Triage` agent composes `Prenatal Visit Prep` behind the scenes to give the on-call provider a triage disposition within seconds.
+
+**Where the output lives:**
+- Posted to the Prompt Opinion chat panel for immediate viewing.
+- Returned to calling agents via A2A for further composition (e.g., handed to an NICU prep agent downstream).
+- Can be persisted as a `DocumentReference` / `Communication` FHIR resource if the workspace wires that up (not required for this submission).
+
+**Who signs off:** The clinician. Every brief closes with `"Clinician review required before any action."` Nothing in MaternalGuard places orders, sends messages, or modifies the chart.
+
+---
+
+## Market, adoption, and unit economics
+
+**Total addressable problem:**
+- ~3.6M live births/year in the US; ~700K complicated by one or more of preeclampsia, GDM, or preterm birth.
+- >80% of pregnancy-related deaths are preventable (CDC). Maternal mortality rose in every measured year 2018-2023.
+
+**Who adopts first:**
+- High-risk OB clinics at academic medical centers (driven by quality metrics and MFM workload).
+- Medicaid Managed Care Organizations with perinatal quality incentives.
+- FQHCs serving low-resource populations where SDOH-aware triage has the biggest delta.
+
+**Unit economics hypothesis:**
+- ~12K–15K input tokens + ~1K output tokens per full brief on GPT-4 class models.
+- At current OpenAI pricing, ~$0.05–$0.08 per brief.
+- Break-even vs. one avoided NICU admission ($25K+) requires only ~300K briefs before positive ROI on a population-scale deployment.
+
+**Why Prompt Opinion + MaternalGuard:**
+- Standards-based (MCP, A2A, FHIR R4, SHARP) — no vendor lock-in.
+- BYO-model — health systems pick the LLM that fits their BAA and spend profile.
+- Marketplace distribution — published once, invokable from any Prompt Opinion workspace.
+- Composable — MFM, NICU prep, Social Work, or PPD-screening agents can A2A-call MaternalGuard as context without re-reading the chart.
+
+---
+
+## Demo script (mapped to judging criteria)
+
+A ~2:55 walkthrough hitting all three judging criteria in order plus the mother-baby dyad and agent composition. Record screen + voiceover.
+
+### 0:00 – 0:20 — The problem (Potential Impact)
+
+- US maternal mortality rose every year 2018-2023 despite >80% of pregnancy-related deaths being preventable (CDC).
+- Black and Indigenous women face 3-4x higher mortality — disparities driven largely by SDOH and missed clinical signals.
+- And it's not just the mother: maternal preeclampsia and GDM drive NICU admissions that cost $25K+ per baby.
+- **MaternalGuard surfaces the signals AND the mother-baby connection as structured context for the Prompt Opinion LLM.**
+
+### 0:20 – 0:40 — The patient (set up the stakes)
+
+- Open Maria Santos in the patient picker.
+- Narrate: "28-year-old G2P1 at 32 weeks. Prior preterm birth. Spanish-speaking, Medicaid, food-insecure. Co-existing preeclampsia and GDM."
+- "Her next prenatal visit is tomorrow. What does the clinician need to know — for her AND the baby — before walking in?"
+
+### 0:40 – 1:55 — Run the Prenatal Visit Prep agent (The AI Factor)
+
+- Send: `Prep me for tomorrow's visit with this patient.`
+- As tools fire, call out on-screen: *"5 MCP tools executing in sequence — FHIR reads only, no PHI leaves the workspace boundary."*
+- When the brief lands, zoom on the **Headline Risk** and read the trajectory section aloud: rising BP + rising proteinuria + rising AST + falling platelets + elevated uric acid = **HELLP progression pattern (ACOG PB #222)**.
+- Scroll to **Neonatal / NICU Readiness**: point out that the same maternal signals project macrosomia (from GDM) and iatrogenic preterm delivery risk — mother-baby dyad, one brief.
+- Key line: "No single data point is alarming in isolation. Rule-based software wouldn't fire. The LLM recognized the constellation because MaternalGuard gave it trends, reference ranges, ACOG Practice Bulletin references, and neonatal downstream implications — together."
+
+### 1:55 – 2:20 — SDOH + allergy-aware reasoning (Potential Impact)
+
+- Point to **Contributing SDOH**: Spanish-language GDM education gap, transportation-driven missed appointments, WIC continuity.
+- Scroll to **GBS prophylaxis** in recommended actions — note that the LLM automatically chose a penicillin alternative (cefazolin or clindamycin per ACOG PB #797) because `GenerateCarePlan` surfaced the allergy.
+- Narrate: *"This is where AI beats rules — connecting a rising AST lab to a transportation barrier and to a 36-week GBS antibiotic choice, all in one reasoning step, with ACOG citations."*
+
+### 2:20 – 2:40 — Agent composition via A2A (The AI Factor, continued)
+
+- Switch to the **On-Call OB Triage** Orchestrator agent (which has NO MCP tools of its own — it delegates to the specialist).
+- Set the **"Consult with another agent"** dropdown at the chat interface to **Prenatal Visit Prep** (Workspace Agent) — this activates A2A delegation.
+- Send: `A patient at 32 weeks is having a bad headache. Triage.`
+- Watch On-Call OB Triage A2A-call `Prenatal Visit Prep`, which in turn fires 5 MaternalGuard tools.
+- Output: `EMERGENCY` disposition with rationale — "BP 148/95, platelets declining to 141, AST rising to 54 — severe-range preeclampsia features, send to L&D immediately."
+- Key line: *"Two-level agent composition — specialist agents calling other specialist agents — entirely over open standards (MCP, A2A, SHARP, FHIR R4). This is 'Agents Assemble' as designed."*
+
+### 2:40 – 2:55 — Feasibility close
+
+On-screen bullets / voiceover:
+- **Data privacy:** SHARP-on-MCP (SMART-on-FHIR lineage); workspace-scoped tokens; read-only; no PHI in logs.
+- **Safety:** Decision support only — every brief ends with *"Clinician review required before any action."* No autonomous orders.
+- **Provenance:** Reference ranges from ACOG/IADPSG; risk flags and screening schedule cite specific ACOG Practice Bulletin numbers (PB #222, #190, #234, #713, #797, #201, etc.).
+- **Interop:** FHIR R4 with US Core profile declarations on Patient / AllergyIntolerance / CarePlan.
+- **Fits existing workflow:** Morning huddle, pre-visit prep, MFM consult, and after-hours triage — no new portal for clinicians to learn.
+
+### What judges should take away
+
+| Criterion | Shown by |
+|---|---|
+| The AI Factor | Multi-signal HELLP constellation recognition; SDOH-to-clinical-to-neonatal synthesis in one brief; two-level A2A agent composition (OnCallTriage → PrenatalVisitPrep → 5 MCP tools) — tasks no rule engine solves |
+| Potential Impact | Targets the #1 preventable cause of maternal mortality AND the downstream NICU cascade; explicitly addresses disparity drivers (language, SDOH, food insecurity); ROI positive within ~300K briefs vs. one avoided NICU admission |
+| Feasibility | FHIR R4 + US Core; SHARP-on-MCP auth (SMART lineage); read-only; ACOG-cited; decision-support framing; structural human-in-the-loop; composable via A2A; runs today on Prompt Opinion |
+
+### Bonus prompts to have ready for Q&A
+
+If judges ask "what if we swap patients?" have these ready:
+- `Run Prenatal Visit Prep on [other patient].` — shows graceful degradation on sparse patients.
+- `This patient has a penicillin allergy and is approaching 36 weeks — what GBS prophylaxis alternative should we use?` — shows allergy-aware reasoning with ACOG PB #797 alternatives.
+- `Compare this patient's BP trajectory to normal pregnancy curves.` — shows InterpretLabTrends + reference-range reasoning.
+- `What does my NICU team need to prepare for this patient?` — shows `PredictNeonatalImpact` used standalone.
+- `Triage: patient reports decreased fetal movement at 33 weeks.` — shows the On-Call OB Triage agent composing Prenatal Visit Prep via A2A.
+
+---
+
 ## Endpoints
 
-| Path | Method | Purpose |
-|---|---|---|
-| `/mcp` | POST | MCP protocol endpoint (initialize, tools/list, tools/call) |
-| `/health` | GET | Health check + tool list |
+| Path | Method | Purpose | Auth |
+|---|---|---|---|
+| `/mcp` | POST | MCP protocol endpoint (initialize, tools/list, tools/call) | `X-API-Key` (when `MCP_API_KEY` env var is set) |
+| `/health` | GET | Health check + tool list (also used by Railway's healthcheck) | None — public |
+
+## API key authentication
+
+The MCP endpoint optionally requires an API key. Behavior:
+
+- **If the `MCP_API_KEY` environment variable is set on the server**, every `POST /mcp` request must include a matching `X-API-Key` header. Missing or mismatching keys return HTTP 401 with a JSON-RPC error.
+- **If `MCP_API_KEY` is unset**, auth is disabled (useful for local development).
+
+### Setting the key in production (Railway)
+
+1. Generate a strong random secret (e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`)
+2. In Railway: select the service → **Variables** tab → add `MCP_API_KEY=<your-secret>` → Save (Railway auto-redeploys)
+3. In Prompt Opinion: open the MCP server entry → set **Authentication Type** to API Key → **Header Name** = `X-API-Key`, **Header Value** = `<your-secret>` → Save
+
+### Why this matters
+
+A publicly-reachable MCP endpoint with no auth is open to anyone who knows the URL. Per the hackathon team's guidance ("we recommend you require a key to your submissions to avoid any unfettered access"), this prevents random callers from invoking your tools and consuming your FHIR/LLM budget. Judges are coordinated through the platform team to receive the key when needed.
 
 ## Server logs
 
@@ -357,6 +919,14 @@ The server logs each MCP request with SHARP header status:
 | Tool returns empty conditions/labs | Patient has no clinical data in FHIR | Import the Maria Santos bundle or add data to the patient |
 | `502 Bad Gateway` on bundle import | Bundle too large for gateway timeout | Split into smaller bundles |
 | Bundle imports as "success" but patient doesn't appear | Patient missing `identifier` array | Add `identifier` with system + value to the Patient resource |
+| Collection retrieval not firing on specialist agent (LLM responds with "I cannot access external documents" or hallucinates guideline quotes; input token count stays low) | "Disable Embedded Tools" is toggled ON — this blocks the `SearchSources` retrieval tool that grounded Collections depend on | Turn "Disable Embedded Tools" OFF in the agent's Tools tab → Save → retest |
+| Orchestrator agent calls `GetPatientData` / `GetPatientDocuments` directly instead of delegating to the specialist via A2A | Embedded tools are available AND the system prompt doesn't explicitly forbid them for clinical triage | Update the orchestrator system prompt to explicitly block those tools for clinical reasoning and require delegation to Prenatal Visit Prep — see the Orchestrator Agent section for the final prompt |
+| Orchestrator hallucinates `SendA2AMessage` with fake UUIDs (e.g. `a1b2c3d4-...`); response says "Simulated A2A Response" | The `{{ OrchestratorAgentsFragment }}` template variable is missing from the orchestrator's system prompt, so the LLM doesn't know the real agent IDs | Include `{{ OrchestratorAgentsFragment }}` near the top of the orchestrator system/consultation prompts |
+| 401 from `/mcp` with "Unauthorized: invalid or missing X-API-Key header" | MCP server has `MCP_API_KEY` env var set on Railway but the request isn't sending a matching header | In Po → MCP Servers → MaternalGuard → set Authentication Type to API Key, Header Name `X-API-Key`, Header Value = your secret |
+
+## Contact
+
+Built by Jonathan Andrei ([jonathanandrei.com](https://jonathanandrei.com)) under the publishing identity **JonathanSolvesProblems**. For API key access (judges, evaluators, or anyone testing the deployed Railway endpoint in their own Prompt Opinion workspace), email **jonathan@jonathanandrei.com**.
 
 ## License
 

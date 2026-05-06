@@ -3,3 +3,8 @@ dist/
 .env
 .env.local
 package-lock.json
+
+# Local-only working files (not for the public repo)
+SUBMISSION.md
+DEMO.md
+DEVPOST.md
