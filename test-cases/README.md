@@ -24,7 +24,7 @@ This creates Maria Elena Santos (DOB 1997-08-15) with all her clinical data — 
 
 ### 2. (Optional) Upload the clinical documents
 
-For extra demo realism, upload the markdown files in `documents/maria-santos/` via the patient's **Upload Document** feature in Prompt Opinion. These are the kind of narrative notes a clinician would write during visits — they don't drive MaternalGuard's tool behavior (our tools read structured FHIR resources), but they make the chart look lived-in for the demo.
+For added clinical fidelity, upload the markdown files in `documents/maria-santos/` via the patient's **Upload Document** feature in Prompt Opinion. These are the kind of narrative notes a clinician would write during visits. They don't drive MaternalGuard's tool behavior (the tools read structured FHIR resources), but they round out the patient chart so reviewers can see the full clinical picture alongside the structured data.
 
 > Note: as of writing, documents uploaded via the UI don't reliably surface as FHIR `DocumentReference` resources via the FHIR API. The markdown files here are for visual demo fidelity, not for tool input.
 

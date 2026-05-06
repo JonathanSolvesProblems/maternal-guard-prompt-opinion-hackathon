@@ -32,7 +32,7 @@ End-to-end test execution against the production deployment. All tests run from 
 | 5.3 | Standalone NICU readiness query | Pass |
 | 6.1 | Graceful degradation on sparse-data patient | Pass |
 
-**Overall: 14/14 tests pass. System cleared for submission.**
+**Overall: 14/14 tests pass.**
 
 ---
 
@@ -262,7 +262,7 @@ Maria reports a severe headache and blurry vision at 32 weeks. She speaks Spanis
 
 **Iteration note**
 
-Initial test runs with the prompt "Maria has a severe headache and blurry vision at 32 weeks. Triage." reproducibly skipped the Spanish summary on Sonnet 4.6 despite the system-prompt rule. The fix was to invoke the Spanish summary explicitly in the user prompt as shown above. This made the bilingual output deterministic across multiple runs and is reflected in the demo recording guide.
+Initial test runs with the prompt "Maria has a severe headache and blurry vision at 32 weeks. Triage." reproducibly skipped the Spanish summary on Sonnet 4.6 despite the system-prompt rule. The fix was to invoke the Spanish summary explicitly in the user prompt as shown above. This made the bilingual output deterministic across multiple runs.
 
 **Result:** Pass
 
@@ -406,4 +406,4 @@ Synthetic patient data sourced from `test-cases/patient-maria-santos-bundle.json
 
 ## Sign-off
 
-All fourteen tests passed against the production deployment as of the test execution date. The system is verified ready for demo recording and Devpost submission.
+All fourteen tests passed against the production deployment as of the test execution date.

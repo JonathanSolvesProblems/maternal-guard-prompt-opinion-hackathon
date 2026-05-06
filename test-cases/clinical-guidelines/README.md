@@ -48,12 +48,9 @@ To strengthen the SDOH / Spanish-language story for Maria:
 
 **ACOG Practice Bulletin PDFs are intentionally NOT included** — they are copyrighted behind paywall. The agent references PB numbers (#222, #190, #234, #713, #797, #201) by citation only; the grounded source text above aligns with current ACOG guidance without reproducing ACOG material.
 
-## Why this matters for judging
+## Why grounded retrieval over LLM recall
 
-This folder is a credibility signal for the clinical-AI judges:
+Two reasons this Collection exists rather than relying on the model's training data alone:
 
-- **Josh Mandel (Microsoft Research / SMART-on-FHIR)** — grounded retrieval over training recall is the right pattern
-- **Piyush Mathur (Cleveland Clinic / BrainX)** — evidence-backed clinical AI > vibes-based clinical AI
-- **Stephon Proctor (CHOP)** — informatics-literate source curation (NICE + CDC + WHO + IADPSG) signals real-world readiness
-
-The README and marketplace listing should reference this Collection explicitly so judges see the intentionality.
+- **Auditability**: every clinical claim the agent makes about a guideline can be traced back to a quoted passage in one of these PDFs, not to whatever the LLM happens to remember.
+- **Drift resistance**: if a guideline updates, swapping the PDF in this Collection updates every agent that grounds against it without any code change or model retraining.

@@ -424,9 +424,9 @@ Use the PredictNeonatalImpact tool with gestationalAgeWeeks 32 to brief the NICU
 
 ---
 
-### Test 7: Minimal patient (judges testing with other patients)
+### Test 7: Graceful degradation on a sparse-data patient
 
-MaternalGuard works with **any** patient in the workspace — not just Maria. When tested with a patient that has minimal data (e.g., the built-in sample patients):
+MaternalGuard works with **any** patient in the workspace, not just Maria. When tested with a patient that has minimal data (for example, the built-in sample patients):
 
 - `AssessMaternalRisk` will return demographics and flag advanced maternal age if applicable, and note empty conditions/labs/meds
 - `ScreenSocialDeterminants` will flag missing insurance, missing social history screening, and missing contact info as barriers
@@ -800,74 +800,6 @@ MaternalGuard is designed to drop into existing clinician workflows, not create 
 
 ---
 
-## Demo script (mapped to judging criteria)
-
-A ~2:55 walkthrough hitting all three judging criteria in order plus the mother-baby dyad and agent composition. Record screen + voiceover.
-
-### 0:00 – 0:20 — The problem (Potential Impact)
-
-- US maternal mortality rose every year 2018-2023 despite >80% of pregnancy-related deaths being preventable (CDC).
-- Black and Indigenous women face 3-4x higher mortality — disparities driven largely by SDOH and missed clinical signals.
-- And it's not just the mother: maternal preeclampsia and GDM drive NICU admissions that cost $25K+ per baby.
-- **MaternalGuard surfaces the signals AND the mother-baby connection as structured context for the Prompt Opinion LLM.**
-
-### 0:20 – 0:40 — The patient (set up the stakes)
-
-- Open Maria Santos in the patient picker.
-- Narrate: "28-year-old G2P1 at 32 weeks. Prior preterm birth. Spanish-speaking, Medicaid, food-insecure. Co-existing preeclampsia and GDM."
-- "Her next prenatal visit is tomorrow. What does the clinician need to know — for her AND the baby — before walking in?"
-
-### 0:40 – 1:55 — Run the Prenatal Visit Prep agent (The AI Factor)
-
-- Send: `Prep me for tomorrow's visit with this patient.`
-- As tools fire, call out on-screen: *"5 MCP tools executing in sequence — FHIR reads only, no PHI leaves the workspace boundary."*
-- When the brief lands, zoom on the **Headline Risk** and read the trajectory section aloud: rising BP + rising proteinuria + rising AST + falling platelets + elevated uric acid = **HELLP progression pattern (ACOG PB #222)**.
-- Scroll to **Neonatal / NICU Readiness**: point out that the same maternal signals project macrosomia (from GDM) and iatrogenic preterm delivery risk — mother-baby dyad, one brief.
-- Key line: "No single data point is alarming in isolation. Rule-based software wouldn't fire. The LLM recognized the constellation because MaternalGuard gave it trends, reference ranges, ACOG Practice Bulletin references, and neonatal downstream implications — together."
-
-### 1:55 – 2:20 — SDOH + allergy-aware reasoning (Potential Impact)
-
-- Point to **Contributing SDOH**: Spanish-language GDM education gap, transportation-driven missed appointments, WIC continuity.
-- Scroll to **GBS prophylaxis** in recommended actions — note that the LLM automatically chose a penicillin alternative (cefazolin or clindamycin per ACOG PB #797) because `GenerateCarePlan` surfaced the allergy.
-- Narrate: *"This is where AI beats rules — connecting a rising AST lab to a transportation barrier and to a 36-week GBS antibiotic choice, all in one reasoning step, with ACOG citations."*
-
-### 2:20 – 2:40 — Agent composition via A2A (The AI Factor, continued)
-
-- Switch to the **On-Call OB Triage** Orchestrator agent (which has NO MCP tools of its own — it delegates to the specialist).
-- Set the **"Consult with another agent"** dropdown at the chat interface to **Prenatal Visit Prep** (Workspace Agent) — this activates A2A delegation.
-- Send: `A patient at 32 weeks is having a bad headache. Triage.`
-- Watch On-Call OB Triage A2A-call `Prenatal Visit Prep`, which in turn fires 5 MaternalGuard tools.
-- Output: `EMERGENCY` disposition with rationale — "BP 148/95, platelets declining to 141, AST rising to 54 — severe-range preeclampsia features, send to L&D immediately."
-- Key line: *"Two-level agent composition — specialist agents calling other specialist agents — entirely over open standards (MCP, A2A, SHARP, FHIR R4). This is 'Agents Assemble' as designed."*
-
-### 2:40 – 2:55 — Feasibility close
-
-On-screen bullets / voiceover:
-- **Data privacy:** SHARP-on-MCP (SMART-on-FHIR lineage); workspace-scoped tokens; read-only; no PHI in logs.
-- **Safety:** Decision support only — every brief ends with *"Clinician review required before any action."* No autonomous orders.
-- **Provenance:** Reference ranges from ACOG/IADPSG; risk flags and screening schedule cite specific ACOG Practice Bulletin numbers (PB #222, #190, #234, #713, #797, #201, etc.).
-- **Interop:** FHIR R4 with US Core profile declarations on Patient / AllergyIntolerance / CarePlan.
-- **Fits existing workflow:** Morning huddle, pre-visit prep, MFM consult, and after-hours triage — no new portal for clinicians to learn.
-
-### What judges should take away
-
-| Criterion | Shown by |
-|---|---|
-| The AI Factor | Multi-signal HELLP constellation recognition; SDOH-to-clinical-to-neonatal synthesis in one brief; two-level A2A agent composition (OnCallTriage → PrenatalVisitPrep → 5 MCP tools) — tasks no rule engine solves |
-| Potential Impact | Targets the #1 preventable cause of maternal mortality AND the downstream NICU cascade; explicitly addresses disparity drivers (language, SDOH, food insecurity); ROI positive within ~300K briefs vs. one avoided NICU admission |
-| Feasibility | FHIR R4 + US Core; SHARP-on-MCP auth (SMART lineage); read-only; ACOG-cited; decision-support framing; structural human-in-the-loop; composable via A2A; runs today on Prompt Opinion |
-
-### Bonus prompts to have ready for Q&A
-
-If judges ask "what if we swap patients?" have these ready:
-- `Run Prenatal Visit Prep on [other patient].` — shows graceful degradation on sparse patients.
-- `This patient has a penicillin allergy and is approaching 36 weeks — what GBS prophylaxis alternative should we use?` — shows allergy-aware reasoning with ACOG PB #797 alternatives.
-- `Compare this patient's BP trajectory to normal pregnancy curves.` — shows InterpretLabTrends + reference-range reasoning.
-- `What does my NICU team need to prepare for this patient?` — shows `PredictNeonatalImpact` used standalone.
-- `Triage: patient reports decreased fetal movement at 33 weeks.` — shows the On-Call OB Triage agent composing Prenatal Visit Prep via A2A.
-
----
-
 ## Endpoints
 
 | Path | Method | Purpose | Auth |
@@ -890,7 +822,7 @@ The MCP endpoint optionally requires an API key. Behavior:
 
 ### Why this matters
 
-A publicly-reachable MCP endpoint with no auth is open to anyone who knows the URL. Per the hackathon team's guidance ("we recommend you require a key to your submissions to avoid any unfettered access"), this prevents random callers from invoking your tools and consuming your FHIR/LLM budget. Judges are coordinated through the platform team to receive the key when needed.
+A publicly-reachable MCP endpoint with no auth is open to anyone who knows the URL. Requiring an API key prevents random callers from invoking the tools, consuming FHIR budget, or triggering downstream LLM costs. Approved evaluators can request the key from the publisher contact below.
 
 ## Server logs
 
@@ -926,7 +858,7 @@ The server logs each MCP request with SHARP header status:
 
 ## Contact
 
-Built by Jonathan Andrei ([jonathanandrei.com](https://jonathanandrei.com)) under the publishing identity **JonathanSolvesProblems**. For API key access (judges, evaluators, or anyone testing the deployed Railway endpoint in their own Prompt Opinion workspace), email **jonathan@jonathanandrei.com**.
+Built by Jonathan Andrei ([jonathanandrei.com](https://jonathanandrei.com)) under the publishing identity **JonathanSolvesProblems**. For API key access (anyone evaluating the deployed Railway endpoint in their own Prompt Opinion workspace), email **jonathan@jonathanandrei.com**.
 
 ## License
 

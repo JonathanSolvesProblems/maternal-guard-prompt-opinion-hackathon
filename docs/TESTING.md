@@ -1,8 +1,6 @@
 # Verification Walkthrough
 
-Run this top-to-bottom before recording the demo video. Each phase has explicit prompts, expected behavior, key assertions, and a pass/fail checkbox. If a phase fails, the troubleshooting pointer at the end of each row tells you which README section to fix from.
-
-> **What this is NOT:** the per-tool reference docs in the main README's "Test Cases" section (those describe what each tool returns in detail). This file is a sequential **verification checklist** to confirm the whole stack works end-to-end before you hit Record.
+A sequential, top-to-bottom checklist to confirm the MaternalGuard stack works end-to-end. Each phase lists explicit prompts, expected behavior, key assertions, and a pass/fail checkbox. If a phase fails, the troubleshooting table in the main README explains how to fix it.
 
 ---
 
@@ -174,7 +172,7 @@ Using the NICE NG133 document from my grounding collection, what blood pressure 
 
 | Expected | Pass criteria |
 |---|---|
-| Tool calls visible | `SearchSources` (Po's embedded retrieval tool) — this is the smoking gun that retrieval fired |
+| Tool calls visible | `SearchSources` (Po's embedded retrieval tool). Its presence in the trace is the definitive signal that vector retrieval fired against the attached Collection. |
 | Token count | Input >5K (chunks injected) — vs ~1.6K when retrieval fails |
 | Numeric thresholds returned | **Mild: 140-149/90-99**, **Moderate: 150-159/100-109**, **Severe: ≥160/110** (NOT ≥170/110, which would indicate hallucination) |
 | Quoted passage present | Direct quote from NICE NG133 (e.g., references CHIPS study, NICE adults guideline) |
@@ -238,7 +236,7 @@ After Test 4.1 completes, check Railway logs for the time window of that test.
 | Each MCP tool call | Returns 200 from FHIR endpoint (visible in tool call latency / success in logs) |
 | No 403 errors | Zero `403` responses on FHIR API calls (would indicate the consult-flow-no-patient-scopes bug raised in Discord) |
 
-**Pass:** ☐ (If 403s present, the orchestrator data may be hallucinated — fall back to demoing Prenatal Visit Prep directly in the recording)
+**Pass:** ☐ (If 403s present, the orchestrator data may be hallucinated. Use Prenatal Visit Prep directly as a fallback path.)
 
 ---
 
@@ -324,16 +322,16 @@ Prep me for tomorrow's visit with this patient.
 
 ---
 
-## Phase 7 · Final pre-recording smoke test (1 min)
+## Phase 7 · Final smoke test (1 min)
 
-Run the **single prompt** you'll use as the demo's main shot, end to end, on the actual model + agent + Railway endpoint you'll use for recording. Confirm one final time it works clean.
+Run the canonical end-to-end prompt against the actual deployed stack one final time to confirm everything works clean.
 
 **Prompt** (Prenatal Visit Prep, Maria selected):
 ```
 Prep me for tomorrow's visit with this patient.
 ```
 
-Watch the full output, time it from prompt-send to brief-rendered. If it's >60s, consider raising the agent timeout to 120s before recording.
+Watch the full output and time it from prompt-send to brief-rendered. If it's over 60 seconds, consider raising the agent timeout to 120 seconds.
 
 **Pass:** ☐
 
@@ -362,13 +360,11 @@ For checking response accuracy in any test above, Maria's actual FHIR data:
 | **Languages** | Spanish (preferred), English | — |
 | **Address** | 847 W Cermak Rd Apt 3B, Chicago IL 60616 | — |
 
-If a test response cites values that don't match this table, the LLM is hallucinating — investigate before recording.
+If a test response cites values that don't match this table, the LLM is hallucinating. Investigate before declaring the run a pass.
 
 ---
 
 ## Pass / fail summary
-
-Run-day status:
 
 - **Phase 0 (pre-flight, 11 boxes):** ☐
 - **Phase 1 (5 tool smoke tests):** ☐ ☐ ☐ ☐ ☐
@@ -377,9 +373,7 @@ Run-day status:
 - **Phase 4 (orchestrator A2A):** ☐ ☐
 - **Phase 5 (edge cases):** ☐ ☐ ☐
 - **Phase 6 (graceful degradation):** ☐
-- **Phase 7 (final pre-recording shot):** ☐
-
-**Cleared for recording:** ☐ (only if all of the above are checked)
+- **Phase 7 (final smoke test):** ☐
 
 If any phase fails, fix it via the [Troubleshooting](../README.md#troubleshooting) table in the main README before re-running.
 
@@ -389,14 +383,12 @@ If any phase fails, fix it via the [Troubleshooting](../README.md#troubleshootin
 
 | Phase | Time |
 |---|---|
-| 0 — Pre-flight | 5 min |
-| 1 — Per-tool smoke (5 tests) | 10 min |
-| 2 — Specialist end-to-end | 3 min |
-| 3 — Collection retrieval (2 tests) | 2 min |
-| 4 — Orchestrator A2A (2 tests) | 3 min |
-| 5 — Edge cases (3 tests) | 3 min |
-| 6 — Graceful degradation | 2 min |
-| 7 — Final pre-recording shot | 1 min |
+| 0. Pre-flight | 5 min |
+| 1. Per-tool smoke (5 tests) | 10 min |
+| 2. Specialist end-to-end | 3 min |
+| 3. Collection retrieval (2 tests) | 2 min |
+| 4. Orchestrator A2A (2 tests) | 3 min |
+| 5. Edge cases (3 tests) | 3 min |
+| 6. Graceful degradation | 2 min |
+| 7. Final smoke test | 1 min |
 | **Total** | **~30 min** |
-
-About one coffee. Run this once before each recording session.
