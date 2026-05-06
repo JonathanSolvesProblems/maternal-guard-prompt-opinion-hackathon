@@ -22,11 +22,26 @@ app.get("/health", async (_, res) => {
       "ScreenSocialDeterminants",
       "GenerateCarePlan",
       "InterpretLabTrends",
+      "PredictNeonatalImpact",
     ],
   });
 });
 
 app.post("/mcp", async (req, res) => {
+  // API key auth — only enforced when MCP_API_KEY env var is set (allows local dev without a key)
+  const expectedApiKey = process.env["MCP_API_KEY"];
+  if (expectedApiKey) {
+    const providedApiKey = req.headers["x-api-key"];
+    if (providedApiKey !== expectedApiKey) {
+      console.log(`[MCP] auth rejected — provided x-api-key=${providedApiKey ? "MISMATCH" : "MISSING"}`);
+      return res.status(401).json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Unauthorized: invalid or missing X-API-Key header" },
+        id: null,
+      });
+    }
+  }
+
   try {
     const method = req.body?.method || "unknown";
     const fhirUrl = req.headers["x-fhir-server-url"];
@@ -88,4 +103,5 @@ app.listen(port, () => {
   console.log(`MaternalGuard MCP server listening on port ${port}`);
   console.log(`Health check: http://localhost:${port}/health`);
   console.log(`MCP endpoint: http://localhost:${port}/mcp`);
+  console.log(`API key auth: ${process.env["MCP_API_KEY"] ? "ENABLED (X-API-Key required)" : "DISABLED (set MCP_API_KEY env var to enable)"}`);
 });

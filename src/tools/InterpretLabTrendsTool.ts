@@ -48,28 +48,22 @@ class InterpretLabTrendsTool implements IMcpTool {
       "InterpretLabTrends",
       {
         description:
-          "Retrieves longitudinal laboratory and vital sign data from FHIR for a pregnant patient, organized chronologically by type. Includes pregnancy-specific reference ranges for each lab. Supports: blood-pressure, glucose, fasting-glucose, hemoglobin, hematocrit, platelets, proteinuria, uric-acid, ast, alt, weight. Returns structured trend data for the platform AI to interpret.",
+          "Longitudinal lab/vital trends from FHIR with pregnancy reference ranges. Supports: blood-pressure, glucose, fasting-glucose, hemoglobin, hematocrit, platelets, proteinuria, uric-acid, ast, alt, weight.",
         inputSchema: {
           patientId: z
             .string()
             .nullable()
-            .describe(
-              "The FHIR Patient resource ID. Optional if patient context is provided via SHARP headers.",
-            )
+            .describe("FHIR Patient ID. Optional — uses SHARP header if omitted.")
             .optional(),
           labTypes: z
             .array(z.string())
             .nullable()
-            .describe(
-              'Array of lab/vital types to retrieve. Options: "blood-pressure", "glucose", "fasting-glucose", "hemoglobin", "hematocrit", "platelets", "proteinuria", "uric-acid", "ast", "alt", "weight". If empty or omitted, retrieves all available.',
-            )
+            .describe("Lab/vital types to fetch. Omit for all.")
             .optional(),
           gestationalAgeWeeks: z
             .number()
             .nullable()
-            .describe(
-              "Current gestational age in weeks for context-appropriate reference ranges.",
-            )
+            .describe("Gestational age in weeks.")
             .optional(),
         },
       },
@@ -195,21 +189,10 @@ class InterpretLabTrendsTool implements IMcpTool {
     });
 
     return {
-      disclaimer:
-        "This is longitudinal lab data with pregnancy reference ranges. Trend interpretation should be performed by a qualified healthcare provider.",
+      disclaimer: "Decision support only — clinician review required.",
       analysisDate: new Date().toISOString().split("T")[0],
       gestationalAgeWeeks: gestationalAgeWeeks || null,
       trends,
-      clinicalContext: {
-        preeclampsiaSigns:
-          "Rising BP (>=140/90), proteinuria (>=300mg/24hr), elevated AST/ALT, low platelets (<100K), elevated uric acid",
-        gdmSigns:
-          "Fasting glucose >=92 mg/dL, 1-hr >=180 mg/dL, 2-hr >=153 mg/dL (IADPSG criteria)",
-        hellpSyndromeSigns:
-          "Hemolysis (falling hematocrit), Elevated Liver enzymes (AST/ALT >70 U/L), Low Platelets (<100,000/uL)",
-        anemiaInPregnancy:
-          "Hemoglobin <11 g/dL in 1st/3rd trimester, <10.5 g/dL in 2nd trimester",
-      },
     };
   }
 }

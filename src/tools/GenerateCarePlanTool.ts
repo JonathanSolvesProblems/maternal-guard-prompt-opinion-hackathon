@@ -14,28 +14,22 @@ class GenerateCarePlanTool implements IMcpTool {
       "GenerateCarePlan",
       {
         description:
-          "Retrieves a pregnant patient's conditions, allergies, medications, and existing care plans from FHIR, then compiles the clinical context needed to generate a personalized prenatal/postnatal FHIR R4 CarePlan. Returns structured patient data along with ACOG guideline references so the platform AI can generate an appropriate care plan.",
+          "Care plan context from FHIR: conditions, allergies, meds, existing care plans, and ACOG-aligned screening recommendations for the gestational age and risk level.",
         inputSchema: {
           patientId: z
             .string()
             .nullable()
-            .describe(
-              "The FHIR Patient resource ID. Optional if patient context is provided via SHARP headers.",
-            )
+            .describe("FHIR Patient ID. Optional — uses SHARP header if omitted.")
             .optional(),
           riskLevel: z
             .string()
             .nullable()
-            .describe(
-              'Overall risk level from a prior AssessMaternalRisk call. One of: "low", "moderate", "high", "critical". Defaults to "moderate" if not provided.',
-            )
+            .describe('One of: "low", "moderate", "high", "critical". Defaults to "moderate".')
             .optional(),
           gestationalAgeWeeks: z
             .number()
             .nullable()
-            .describe(
-              "Current gestational age in weeks. Helps determine appropriate screenings and visit schedule.",
-            )
+            .describe("Gestational age in weeks.")
             .optional(),
         },
       },
@@ -139,8 +133,7 @@ class GenerateCarePlanTool implements IMcpTool {
     const recommendedScreenings = this._getRecommendedScreenings(gestationalAgeWeeks, riskLevel);
 
     return {
-      disclaimer:
-        "This data is provided to support care plan generation. Any care plan must be reviewed and approved by a qualified healthcare provider.",
+      disclaimer: "Decision support only — clinician review required before any care plan changes.",
       patientId: patient.id,
       birthDate: patient.birthDate || null,
       riskLevel,
@@ -150,41 +143,7 @@ class GenerateCarePlanTool implements IMcpTool {
       currentMedications: medicationList,
       existingCarePlans: existingPlans,
       recommendedScreenings,
-      carePlanGuidelines: {
-        source: "ACOG (American College of Obstetricians and Gynecologists)",
-        lowRiskVisitSchedule: "Every 4 weeks until 28 weeks, every 2 weeks until 36 weeks, then weekly",
-        highRiskVisitSchedule: "More frequent visits as clinically indicated, often every 1-2 weeks",
-        standardPrenatalLabs: [
-          "Complete blood count (CBC)",
-          "Blood type and Rh factor",
-          "Urinalysis",
-          "Hepatitis B surface antigen",
-          "HIV screening",
-          "Syphilis screening",
-          "Rubella immunity",
-          "Glucose challenge test (24-28 weeks)",
-          "Group B Streptococcus culture (35-37 weeks)",
-        ],
-      },
-      fhirCarePlanTemplate: {
-        resourceType: "CarePlan",
-        status: "active",
-        intent: "plan",
-        subject: { reference: `Patient/${patient.id}` },
-        category: [
-          {
-            coding: [
-              {
-                system: "http://snomed.info/sct",
-                code: "134435003",
-                display: "Routine antenatal care",
-              },
-            ],
-          },
-        ],
-        description:
-          "Use this template structure. Populate 'activity' array with scheduled visits, labs, screenings, referrals, and patient education based on the patient data and risk level above.",
-      },
+      carePlanGuidelineSource: "ACOG",
     };
   }
 
@@ -200,31 +159,39 @@ class GenerateCarePlanTool implements IMcpTool {
     }
 
     if (gestationalAgeWeeks <= 13) {
-      screenings.push("First trimester combined screening (11-13 weeks)");
-      screenings.push("Initial prenatal labs panel");
-      screenings.push("Dating ultrasound if not already performed");
+      screenings.push("First trimester combined screening (11-13 weeks) [ACOG PB #226]");
+      screenings.push("Initial prenatal labs panel [ACOG Antepartum Record]");
+      screenings.push("Dating ultrasound if not already performed [ACOG Committee Opinion #700]");
     }
     if (gestationalAgeWeeks >= 15 && gestationalAgeWeeks <= 22) {
-      screenings.push("Quad screen / second trimester screening (15-22 weeks)");
-      screenings.push("Anatomy ultrasound (18-22 weeks)");
+      screenings.push("Quad screen / second trimester screening (15-22 weeks) [ACOG PB #226]");
+      screenings.push("Anatomy ultrasound (18-22 weeks) [ACOG Committee Opinion #700]");
     }
     if (gestationalAgeWeeks >= 24 && gestationalAgeWeeks <= 28) {
-      screenings.push("Glucose challenge test for GDM (24-28 weeks)");
-      screenings.push("Repeat CBC for anemia screening");
-      screenings.push("Rh antibody screen if Rh-negative");
+      screenings.push("Glucose challenge test for GDM (24-28 weeks) [ACOG PB #190]");
+      screenings.push("Repeat CBC for anemia screening [ACOG PB #95]");
+      screenings.push("Rh antibody screen if Rh-negative [ACOG PB #181]");
     }
     if (gestationalAgeWeeks >= 35 && gestationalAgeWeeks <= 37) {
-      screenings.push("Group B Streptococcus (GBS) culture (35-37 weeks)");
+      screenings.push("Group B Streptococcus (GBS) culture (35-37 weeks) [ACOG PB #797]");
     }
     if (gestationalAgeWeeks >= 36) {
-      screenings.push("Weekly NST/BPP if high-risk");
+      screenings.push("Weekly NST/BPP if high-risk [ACOG PB #229]");
       screenings.push("Cervical checks as clinically indicated");
     }
 
     if (riskLevel === "high" || riskLevel === "critical") {
-      screenings.push("More frequent BP monitoring");
-      screenings.push("Serial growth ultrasounds every 3-4 weeks");
-      screenings.push("Consider antenatal corticosteroids counseling if <34 weeks");
+      screenings.push("More frequent BP monitoring [ACOG PB #222]");
+      screenings.push("Serial growth ultrasounds every 3-4 weeks [ACOG PB #229]");
+      if (gestationalAgeWeeks < 34) {
+        screenings.push("Antenatal corticosteroids counseling for fetal lung maturity [ACOG PB #234]");
+      }
+      if (gestationalAgeWeeks >= 34 && gestationalAgeWeeks < 37) {
+        screenings.push("Late-preterm corticosteroids may be considered [ACOG PB #713]");
+      }
+      if (gestationalAgeWeeks < 32) {
+        screenings.push("Magnesium sulfate for neuroprotection if delivery imminent [ACOG Committee Opinion #652]");
+      }
     }
 
     return screenings;

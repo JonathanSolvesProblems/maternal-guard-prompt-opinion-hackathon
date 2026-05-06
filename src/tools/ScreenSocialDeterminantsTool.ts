@@ -14,14 +14,12 @@ class ScreenSocialDeterminantsTool implements IMcpTool {
       "ScreenSocialDeterminants",
       {
         description:
-          "Retrieves and structures a pregnant patient's demographic, insurance, address, and social history data from FHIR for Social Determinants of Health (SDOH) screening. Identifies potential barriers to maternal care such as lack of insurance, missing contact info, language barriers, and social risk factors. Returns structured data for the platform AI to analyze.",
+          "SDOH screening from FHIR. Returns demographics, insurance, language, social history observations, and flagged barriers (no insurance, non-English primary language, missing contact info, absent screening).",
         inputSchema: {
           patientId: z
             .string()
             .nullable()
-            .describe(
-              "The FHIR Patient resource ID. Optional if patient context is provided via SHARP headers.",
-            )
+            .describe("FHIR Patient ID. Optional — uses SHARP header if omitted.")
             .optional(),
         },
       },
@@ -144,8 +142,7 @@ class ScreenSocialDeterminantsTool implements IMcpTool {
     }
 
     return {
-      disclaimer:
-        "This is structured demographic and social data for SDOH screening. A comprehensive assessment by a social worker or care coordinator is recommended for any identified risk factors.",
+      disclaimer: "Decision support only — social work consult recommended for identified barriers.",
       screeningDate: new Date().toISOString().split("T")[0],
       patientId: patient.id,
       demographics: {
@@ -170,15 +167,6 @@ class ScreenSocialDeterminantsTool implements IMcpTool {
       insuranceCoverage: coverageEntries,
       socialHistoryObservations: socialFactors,
       potentialBarriers,
-      sdohDomainsToAssess: [
-        "Economic Stability — employment, income, insurance adequacy",
-        "Education Access — health literacy, understanding of prenatal care",
-        "Healthcare Access — transportation to appointments, provider availability, interpreter needs",
-        "Neighborhood & Environment — housing stability, food access, safety",
-        "Social & Community Context — social support, domestic violence screening, isolation",
-      ],
-      equityContext:
-        "Maternal mortality in the US disproportionately affects Black and Indigenous women (3-4x higher rates). SDOH factors are major contributors to these disparities. Consider these factors in the overall risk assessment.",
     };
   }
 }

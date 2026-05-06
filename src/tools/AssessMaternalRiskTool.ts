@@ -9,23 +9,27 @@ import { FhirClientInstance } from "../fhir-client";
 import { fhirR4 } from "@smile-cdr/fhirts";
 import { differenceInYears, parseISO } from "date-fns";
 
-// ICD-10 / SNOMED codes associated with maternal risk factors
-const HIGH_RISK_CONDITION_CODES = new Set([
-  "O10", "O11", // Pre-existing hypertension
-  "O13", "O14", "O15", // Gestational hypertension, preeclampsia, eclampsia
-  "O24", // Diabetes in pregnancy
-  "O26.8", // Obesity in pregnancy
-  "O30", // Multiple gestation
-  "O36", // Maternal care for known/suspected fetal problems
-  "O44", // Placenta previa
-  "O46", // Antepartum hemorrhage
-  "E11", // Type 2 diabetes
-  "E10", // Type 1 diabetes
-  "I10", // Essential hypertension
-  "N18", // Chronic kidney disease
-  "D68", // Thrombophilia
-  "O09.1", // Supervision of pregnancy with history of ectopic pregnancy
-]);
+// ICD-10 / SNOMED codes associated with maternal risk factors + ACOG references
+const HIGH_RISK_CONDITIONS: Array<{ prefix: string; acog: string }> = [
+  { prefix: "O10", acog: "ACOG PB #203 (Chronic HTN in Pregnancy)" },
+  { prefix: "O11", acog: "ACOG PB #203 + PB #222 (Superimposed Preeclampsia)" },
+  { prefix: "O13", acog: "ACOG PB #222 (Gestational HTN / Preeclampsia)" },
+  { prefix: "O14", acog: "ACOG PB #222 (Preeclampsia)" },
+  { prefix: "O15", acog: "ACOG PB #222 (Eclampsia)" },
+  { prefix: "O24", acog: "ACOG PB #190 (GDM) / PB #201 (Pregestational Diabetes)" },
+  { prefix: "O26.8", acog: "ACOG PB #156 (Obesity in Pregnancy)" },
+  { prefix: "O30", acog: "ACOG PB #231 (Multifetal Gestations)" },
+  { prefix: "O36", acog: "ACOG PB #229 (Antepartum Fetal Surveillance)" },
+  { prefix: "O44", acog: "ACOG Committee Opinion (Placenta Previa)" },
+  { prefix: "O46", acog: "ACOG PB #183 (Antepartum Hemorrhage / PPH)" },
+  { prefix: "E10", acog: "ACOG PB #201 (Pregestational Diabetes)" },
+  { prefix: "E11", acog: "ACOG PB #201 (Pregestational Diabetes)" },
+  { prefix: "I10", acog: "ACOG PB #203 (Chronic HTN)" },
+  { prefix: "N18", acog: "ACOG CKD in Pregnancy guidance" },
+  { prefix: "D68", acog: "ACOG PB #197 (Thromboembolism in Pregnancy)" },
+  { prefix: "O09.1", acog: "ACOG recurrent pregnancy loss guidance" },
+];
+const HIGH_RISK_CONDITION_CODES = new Set(HIGH_RISK_CONDITIONS.map((c) => c.prefix));
 
 class AssessMaternalRiskTool implements IMcpTool {
   registerTool(server: McpServer, req: Request) {
@@ -33,14 +37,12 @@ class AssessMaternalRiskTool implements IMcpTool {
       "AssessMaternalRisk",
       {
         description:
-          "Retrieves and structures a pregnant patient's clinical data from FHIR (demographics, conditions, vitals, labs, medications) for maternal risk assessment. Returns organized clinical data with flagged risk factors for preeclampsia, gestational diabetes, preterm birth, and postpartum hemorrhage. The platform AI model uses this structured data to perform clinical reasoning.",
+          "Maternal risk assessment from FHIR. Returns demographics, active conditions, recent vitals/labs, meds, and risk flags for preeclampsia/GDM/preterm birth/PPH.",
         inputSchema: {
           patientId: z
             .string()
             .nullable()
-            .describe(
-              "The FHIR Patient resource ID. Optional if patient context is provided via SHARP headers.",
-            )
+            .describe("FHIR Patient ID. Optional — uses SHARP header if omitted.")
             .optional(),
         },
       },
@@ -125,6 +127,7 @@ class AssessMaternalRiskTool implements IMcpTool {
       system: string;
       status: string;
       isHighRisk: boolean;
+      acogReference?: string;
     }> = [];
 
     if (conditions?.entry?.length) {
@@ -132,15 +135,14 @@ class AssessMaternalRiskTool implements IMcpTool {
         const condition = entry.resource as fhirR4.Condition;
         const coding = condition.code?.coding?.[0];
         const code = coding?.code || "";
-        const isHighRisk = Array.from(HIGH_RISK_CONDITION_CODES).some((hrc) =>
-          code.startsWith(hrc),
-        );
+        const match = HIGH_RISK_CONDITIONS.find((c) => code.startsWith(c.prefix));
         activeConditions.push({
           display: coding?.display || condition.code?.text || "Unknown",
           code,
           system: coding?.system || "",
           status: condition.clinicalStatus?.coding?.[0]?.code || "unknown",
-          isHighRisk,
+          isHighRisk: !!match,
+          acogReference: match?.acog,
         });
       }
     }
@@ -215,12 +217,12 @@ class AssessMaternalRiskTool implements IMcpTool {
     if (ageRiskFlag) riskFlags.push(ageRiskFlag);
     const highRiskConditions = activeConditions.filter((c) => c.isHighRisk);
     for (const c of highRiskConditions) {
-      riskFlags.push(`High-risk condition: ${c.display} (${c.code})`);
+      const refSuffix = c.acogReference ? ` — see ${c.acogReference}` : "";
+      riskFlags.push(`High-risk condition: ${c.display} (${c.code})${refSuffix}`);
     }
 
     return {
-      disclaimer:
-        "This is structured clinical data for decision support. All findings must be reviewed by a qualified healthcare provider.",
+      disclaimer: "Decision support only — clinician review required.",
       assessmentDate: new Date().toISOString().split("T")[0],
       demographics,
       riskFlags,
@@ -228,12 +230,6 @@ class AssessMaternalRiskTool implements IMcpTool {
       recentVitals: vitals.slice(0, 10),
       recentLabs: labResults.slice(0, 15),
       currentMedications,
-      riskCategoriesToAssess: [
-        "Preeclampsia — look for hypertension, proteinuria, elevated liver enzymes, low platelets",
-        "Gestational Diabetes — look for elevated glucose, BMI, family history, prior GDM",
-        "Preterm Birth — look for prior preterm birth, cervical insufficiency, multiple gestation, infections",
-        "Postpartum Hemorrhage — look for prior PPH, placenta previa, grand multiparity, prolonged labor",
-      ],
     };
   }
 }
