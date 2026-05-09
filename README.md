@@ -8,7 +8,14 @@ An MCP server that surfaces maternal health risk signals from FHIR patient data,
 
 MaternalGuard reads pregnant patients' clinical data (demographics, conditions, vitals, labs, medications, social history, care plans) from a FHIR R4 server and returns it as structured, decision-ready context for the platform's AI to reason over. It does not call any LLM directly. All reasoning happens in Prompt Opinion.
 
-The full architecture diagram lives at [docs/architecture.drawio](docs/architecture.drawio). Open it at [app.diagrams.net](https://app.diagrams.net) (File, then Open From Device) to explore the swimlanes covering clinician, BYO specialist, Orchestrator, guardrail, A2A, Railway, the 5 MCP tools, the grounded Collection, and the FHIR store with US Core resources.
+The full architecture diagram is below. The editable source lives at [docs/architecture.drawio](docs/architecture.drawio), with a [Google Drive copy](https://drive.google.com/file/d/1oXUVeLkLCEOIHY-5OERu6KW2i-FaRXQR/view?usp=sharing) for anyone who wants it without cloning. Open the source at [app.diagrams.net](https://app.diagrams.net) (File, then Open From Device) to explore the swimlanes covering clinician, BYO specialist, Orchestrator, guardrail, A2A, Railway, the 5 MCP tools, the grounded Collection, and the FHIR store with US Core resources.
+
+<div align="center">
+  <a href="docs/architecture.drawio.png">
+    <img src="docs/architecture.drawio.png" alt="MaternalGuard architecture diagram: clinician interacts with the Prompt Opinion platform; the BYO Prenatal Visit Prep specialist and the On-Call OB Triage Orchestrator coordinate via A2A; a guardrail enforces the clinician-review footer; the MaternalGuard MCP server on Railway exposes 5 tools (AssessMaternalRisk, InterpretLabTrends, ScreenSocialDeterminants, GenerateCarePlan, PredictNeonatalImpact) backed by a vector-grounded clinical-guideline Collection and a FHIR R4 store with US Core resources" width="900" />
+  </a>
+  <p><em>Click for full resolution. Source: <a href="docs/architecture.drawio">docs/architecture.drawio</a> · <a href="https://drive.google.com/file/d/1oXUVeLkLCEOIHY-5OERu6KW2i-FaRXQR/view?usp=sharing">Google Drive copy</a>.</em></p>
+</div>
 
 **Also in this repo:**
 - [docs/TESTING.md](docs/TESTING.md) is a 7-phase verification walkthrough (~30 min) covering pre-flight, per-tool smoke tests, specialist agent, Collection retrieval, A2A orchestration, edge cases, and graceful degradation
@@ -79,7 +86,7 @@ MaternalGuard MCP server (Express, port 5000)
 FHIR R4 workspace store
 ```
 
-A full visual of the architecture (BYO agents, guardrail, A2A, 5 MCP tools, FHIR resources) is at [docs/architecture.drawio](docs/architecture.drawio). Open it at [app.diagrams.net](https://app.diagrams.net) (File → Open From → Device) or in the VS Code *Draw.io Integration* extension.
+A full visual of the architecture (BYO agents, guardrail, A2A, 5 MCP tools, FHIR resources) is rendered at the top of this README — see [docs/architecture.drawio.png](docs/architecture.drawio.png) for the image, [docs/architecture.drawio](docs/architecture.drawio) for the editable source, and the [Google Drive copy](https://drive.google.com/file/d/1oXUVeLkLCEOIHY-5OERu6KW2i-FaRXQR/view?usp=sharing) for anyone who wants the source without cloning. Open the source file at [app.diagrams.net](https://app.diagrams.net) (File → Open From → Device) or in the VS Code *Draw.io Integration* extension.
 
 - **TypeScript + Express 5** + `@modelcontextprotocol/sdk`
 - Each `/mcp` POST spins up a fresh `McpServer` per request using `StreamableHTTPServerTransport` (stateless mode, no session management)
@@ -107,7 +114,8 @@ src/
   null-utilities.ts                       Null-safe helpers
   IMcpTool.ts                             Tool interface
 docs/
-  architecture.drawio                     Full architecture diagram (draw.io / diagrams.net)
+  architecture.drawio                     Full architecture diagram (draw.io / diagrams.net source)
+  architecture.drawio.png                 Rendered PNG of the architecture diagram (embedded at top of README)
 test-cases/
   README.md                               How to use the test data
   patient-maria-santos-bundle.json        Sample FHIR bundle (40+ resources)
