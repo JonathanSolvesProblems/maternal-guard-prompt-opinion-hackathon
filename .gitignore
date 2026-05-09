@@ -9,4 +9,8 @@ CLAUDE.md
 # Local-only working files (not for the public repo)
 SUBMISSION.md
 DEMO.md
+DEMO-V2.md
 DEVPOST.md
+demo-audio.mp3
+*.mp4
+_audio_temp/
