@@ -29,7 +29,44 @@ Maternal mortality in the US has been rising for decades. Over 80% of pregnancy-
 
 MaternalGuard gives AI the structured context it needs to connect these dots: flagging that a rising BP trend + new proteinuria + falling platelets = HELLP risk, or that a Spanish-speaking Medicaid patient in a food desert needs interpreter services and WIC continuation alongside her preeclampsia monitoring.
 
-## The 5 Tools
+### What makes MaternalGuard distinct
+
+MaternalGuard is the only Prompt Opinion marketplace tool that combines, in one composable package, all of the following:
+
+1. Pregnancy-specific longitudinal trend analysis across BP, AST, platelets, proteinuria, uric acid, and glucose, with HELLP-evolution pattern detection that no single-threshold rule engine can catch.
+2. SDOH reasoning that ties social barriers (language, transportation, food security) directly to clinical thresholds and recommendations.
+3. Bilingual patient output (English plus Spanish summary) wired through agent-to-agent orchestration.
+4. Vector-grounded guideline retrieval against five real public-domain PDFs (NICE NG133, USPSTF aspirin, CDC GBS, IADPSG 2010 GDM, WHO 2022 antenatal corticosteroids), so every recommendation can quote a real passage from a real document.
+5. Governed FHIR write-back of draft Task and Flag resources with a clinician-review gate, plus FHIR Provenance for audit, and edit-restricted coordination metadata.
+6. A bundled cohort panel scan that ranks patients by HELLP-evolution signal strength for morning huddle and panel triage workflows.
+
+This combination is the moat. Each individual capability could be reimplemented by another team in a weekend, but the composition (clinical-evidence engine, generative reasoning layer, A2A orchestration, governed write-back, panel triage, all over open standards) takes deliberate design and is hard to replicate by prompting alone.
+
+## Design philosophy: deterministic plus generative
+
+MaternalGuard is built on a clear architectural thesis, borrowed from the LoopGuard Passport pattern: **the MCP server is the clinical evidence engine. The Prompt Opinion agent is the generative reasoning layer. Neither alone is sufficient; together they do what neither can do alone.**
+
+**Deterministic (handled in this MCP server, in `src/clinical/` and the 5 data tools):**
+
+- Gestational age computation from Z34.XX onset dates.
+- High-risk ICD-10 flagging against the ACOG criteria table.
+- Lab and vital threshold comparisons against pregnancy-specific reference ranges.
+- HELLP-evolution pattern detection from trend math (rising AST + falling platelets + rising BP or rising proteinuria) in `src/clinical/urgency-classifier.ts`.
+- FHIR Task, Flag, and Provenance resource construction with edit-restricted coordination metadata in `src/clinical/fhir-builders.ts`.
+- Allergy-medication interaction lookups (e.g., penicillin to cefazolin substitution per CDC GBS).
+- Cohort ranking by urgency score.
+
+**Generative (handled by the Prompt Opinion agent system prompts, with Collection retrieval):**
+
+- Cross-signal narrative synthesis: weaving rising BP, rising AST, falling platelets, and rising uric acid into a single HELLP-evolution story.
+- SDOH-to-clinical reasoning: tying a transportation gap to a lower admission threshold, or a language barrier to interpreter-required counseling.
+- Bilingual patient summary generation (English plus Spanish).
+- Guideline passage selection and quoting via vector retrieval against the Collection.
+- Care plan gap composition: weighing what is in the existing plan against what ACOG recommends at the current gestational age.
+
+Why split this way: rules give us auditability, reproducibility, and zero hallucination on safety-critical math. AI gives us the cross-domain synthesis that no rule engine can do. Putting them on opposite sides of the MCP boundary means each side is independently testable and replaceable.
+
+## The 7 Tools
 
 | Tool | What it does | Key FHIR resources |
 |---|---|---|
@@ -38,6 +75,8 @@ MaternalGuard gives AI the structured context it needs to connect these dots: fl
 | `InterpretLabTrends` | Fetches longitudinal labs/vitals by LOINC code. Returns chronological readings with pregnancy-specific reference ranges and trend statistics (min/max/mean). | Observation (by LOINC code) |
 | `GenerateCarePlan` | Pulls conditions, allergies, meds, and existing care plans. Returns ACOG-aligned screening recommendations (with Practice Bulletin numbers) for the gestational age and risk level. | Patient, Condition, AllergyIntolerance, MedicationRequest, CarePlan |
 | `PredictNeonatalImpact` | **Mother-baby dyad**: maps active maternal conditions and abnormal labs to projected neonatal outcomes (macrosomia, neonatal hypoglycemia, RDS, NICU admission, IUGR, etc.) and returns a gestational-age-specific neonatal readiness checklist. Each risk cites the relevant ACOG Practice Bulletin. | Condition, Observation |
+| `MaternalPanelScan` | **Cohort triage** (env-gated). Scans a bundled cohort of pregnant patients, applies the deterministic urgency classifier from `src/clinical/urgency-classifier.ts`, and returns a ranked triage queue with RED / YELLOW / GREEN urgency bands per patient. Designed for morning huddle and panel triage workflows. Operates on a bundled patient list configured via `MATERNALGUARD_BUNDLED_PATIENT_IDS`; does NOT enumerate a live workspace (live enumeration is a future Prompt Opinion platform feature). | Patient, Observation |
+| `ProposeMaternalAction` | **Governed FHIR write-back**. Drafts a FHIR Task and (optionally) a FHIR Flag for the patient with status set to draft (`Task.status=requested`, `Flag.status=inactive`) and writes a Provenance audit record. A clinician must change status to `accepted` / `active` before the action takes effect. Edit-restricted to coordination metadata (owner, due date, urgency band, clinician note); clinical content (rationale, guideline citation) is fixed. Dry-run by default; persists when `MATERNALGUARD_ENABLE_WRITEBACK=true`. | Task, Flag, Provenance |
 
 All tools rely on **SHARP-on-MCP** headers (`X-FHIR-Server-URL`, `X-FHIR-Access-Token`, `X-Patient-ID`) which Prompt Opinion forwards automatically when a patient is selected and the agent has Patient Context enabled.
 
@@ -709,7 +748,7 @@ Clinical AI submissions that don't address safety get dinged fast. Here's how Ma
 - **No dosing recommendations.** Tools surface current medications but never suggest doses or new prescriptions.
 - **No imaging interpretation.** Ultrasound findings (e.g., IUGR) are read from existing FHIR Observations/Conditions; the tools do not interpret raw images.
 - **No final diagnosis.** Every output is framed as decision support over structured data, not diagnosis.
-- **No autonomous actions.** Read-only FHIR access. No writes, no orders placed, no messages sent to patients.
+- **No autonomous actions.** Reads from FHIR are always permitted. Writes are gated behind `MATERNALGUARD_ENABLE_WRITEBACK=true` and produce only **draft** Task and Flag resources (`Task.status=requested`, `Flag.status=inactive`) with a Provenance audit trail. A reviewing clinician must change status to `accepted` or `active` before any action takes effect. No orders placed, no medications proposed, no patient-facing messages sent. Editable fields are limited to coordination metadata (owner, due date, urgency band, clinician note); clinical content (rationale, guideline citation) is fixed.
 
 ### Privacy architecture
 - **SHARP-on-MCP (SMART-on-FHIR lineage).** Patient context is forwarded per-request as headers (`X-FHIR-Server-URL`, `X-FHIR-Access-Token`, `X-Patient-ID`). The MCP server holds no session state.
@@ -742,6 +781,26 @@ A **Prompt Opinion Agent-type guardrail** named `safety_footer_enforcement` is a
 This moves safety from "we prompted the model to be safe" to "a second model structurally validates every response." Guardrail configuration — validator model, type, validation instruction — lives in the Prompt Opinion agent configuration, not in this repo. Validation cost is trivial (~$0.001 per check on a cheap model like Haiku 4.5).
 
 **Why it's attached to Prenatal Visit Prep specifically:** this agent does the heaviest clinical reasoning and produces the structured brief. On-Call OB Triage inherits the safety posture transitively — its disposition is grounded in whatever Prenatal Visit Prep (or the MaternalGuard tools directly) returned.
+
+---
+
+## Regulatory, accreditation, and quality framework mapping
+
+MaternalGuard's safety and grounding model maps to the standards hospital procurement, accreditation, and quality teams already work to. Listing them by name shortens the institutional-readiness conversation.
+
+| Framework | What it covers | How MaternalGuard maps |
+|---|---|---|
+| **HIPAA Privacy and Security Rules** | PHI handling, transmission security, audit logging | SHARP per-request token model with no PHI in logs; bearer-token transmission over TLS; structured logging records only method, header presence booleans, tool name, non-PHI patient UUID. Read access is request-scoped; writes are draft-only with Provenance audit. |
+| **HIPAA Business Associate Agreement (BAA)** | Vendor contractual obligation when handling PHI on behalf of a covered entity | Not in place at hackathon stage. Path to production: BAA with hospital partner, with Railway (BAA-eligible tier), with Prompt Opinion, and with the chosen LLM provider. |
+| **SOC 2 Type 2 (Security, Confidentiality, Availability)** | Six to twelve month operational security observation | Not in place. Path to production: Type 1 prep with consultant (~6 to 8 weeks), then Type 2 observation period. Hospital procurement gate. |
+| **Joint Commission Provision of Care Maternal Safety Standards (PC.06.01.01 - PC.06.01.05)** | Hospital accreditation standards for severe maternal hypertension, hemorrhage, and venous thromboembolism in pregnancy | MaternalGuard's HELLP-evolution detection, severe-features preeclampsia thresholds, and antenatal-corticosteroids prompts align with the perinatal safety standards the Joint Commission audits. |
+| **CMS Maternal Quality HEDIS Measures (Prenatal and Postpartum Care, Timeliness of Prenatal Care)** | Insurance plan quality measures for prenatal and postpartum follow-up | Panel-scan output explicitly identifies missed surveillance windows by gestational age, producing the audit trail HEDIS reporting needs. |
+| **Alliance for Innovation on Maternal Health (AIM) Patient Safety Bundles** | National maternal safety standards for hypertension, hemorrhage, sepsis, severe maternal morbidity | The clinical-evidence engine (urgency-classifier + Collection guidelines) is grounded in the same source documents the AIM bundles are built on. |
+| **CMS Birthing-Friendly Hospital Designation** | New CMS attestation program with maternal-care quality metrics | Panel-scan output supports the data collection a hospital needs to attest. |
+| **WHO Quality of Care Standards for Maternal and Newborn Health** | International maternal-care quality framework | WHO 2022 antenatal corticosteroids guideline is one of the five PDFs in the grounded Collection. |
+| **ACOG Practice Bulletins** | Domain clinical standard of care | Cited inline in every recommendation (PB #222 preeclampsia, PB #190 GDM, PB #234 corticosteroids, PB #713 late-preterm steroids, PB #797 GBS, PB #201 pregestational diabetes, PB #203 chronic HTN, PB #229 antepartum surveillance). |
+
+**What is intentionally NOT claimed:** MaternalGuard is not FDA-cleared as a medical device, is not HITRUST-certified, and has no current operational BAAs. These are explicit production gates, not stealth gaps.
 
 ---
 
@@ -786,25 +845,49 @@ MaternalGuard is designed to drop into existing clinician workflows, not create 
 
 ## Market, adoption, and unit economics
 
-**Total addressable problem:**
-- ~3.6M live births/year in the US; ~700K complicated by one or more of preeclampsia, GDM, or preterm birth.
-- >80% of pregnancy-related deaths are preventable (CDC). Maternal mortality rose in every measured year 2018-2023.
+**Total addressable problem (with citations):**
+
+- ~3.6M live births per year in the US (CDC NCHS). About 700K are complicated by one or more of preeclampsia, gestational diabetes, or preterm birth.
+- More than 80 percent of pregnancy-related deaths are preventable, per CDC Maternal Mortality Review Committees in 36 states, 2017 to 2019 (Trost et al., CDC MMWR Vital Signs, Sept 2022). Updated figure is approximately 84 percent.
+- Maternal mortality rose in every measured year from 2018 to 2022, with the 2021 rate at 32.9 per 100,000 live births (Hoyert, CDC NCHS National Vital Statistics Reports, 2023).
+- Black women experience pregnancy-related death at approximately 3.5 times the rate of white women: 50.3 vs 14.5 per 100,000 live births (CDC NCHS Maternal Mortality Rates in the United States, 2023).
+- Severe maternal morbidity (SMM) affects about 60,000 US women per year, with rates increasing 75 percent over the prior decade (Fingar et al., AHRQ HCUP Statistical Brief #243, 2018; updated CDC Severe Maternal Morbidity Indicators).
 
 **Who adopts first:**
-- High-risk OB clinics at academic medical centers (driven by quality metrics and MFM workload).
-- Medicaid Managed Care Organizations with perinatal quality incentives.
-- FQHCs serving low-resource populations where SDOH-aware triage has the biggest delta.
 
-**Unit economics hypothesis:**
-- ~12K–15K input tokens + ~1K output tokens per full brief on GPT-4 class models.
-- At current OpenAI pricing, ~$0.05–$0.08 per brief.
-- Break-even vs. one avoided NICU admission ($25K+) requires only ~300K briefs before positive ROI on a population-scale deployment.
+- High-risk OB clinics at academic medical centers, driven by quality metrics and MFM workload.
+- Medicaid Managed Care Organizations with perinatal quality incentives.
+- Federally Qualified Health Centers (FQHCs) serving low-resource populations where SDOH-aware triage has the biggest delta.
+
+**Per-event clinical and economic impact (citations):**
+
+| Event MaternalGuard helps avoid or surface earlier | Clinical and cost figure | Source |
+|---|---|---|
+| One NICU admission avoided or shortened | Mean NICU admission spending: **$71,158** (range $4,488 to $161,929 across 10th to 90th percentile); ~1 in 13 newborns admitted | Health Care Cost Institute, NICU Admissions and Spending 2017-2021 (HCCI, 2023) |
+| One severe maternal morbidity event | Direct hospital costs increase by **$10,158** per delivery hospitalization with SMM vs. without | Black et al., American Journal of Obstetrics and Gynecology, 2021 |
+| Severe-features preeclampsia recognized 2 weeks earlier | Maternal ICU admission risk drops substantially; mean maternal ICU cost ~ $42K per stay (US ICU mean cost data, AHRQ HCUP). Shorter latency to delivery is the protective effect of antenatal corticosteroids given >=48h before preterm birth, with a number-needed-to-treat ~5 for avoided RDS | Roberge et al., American Journal of Obstetrics and Gynecology, 2018; WHO 2022 ACS guideline |
+| One avoided eclamptic seizure | Eclampsia mortality ~1.8 percent; survivors have 5-fold higher risk of long-term cardiovascular morbidity | Knight et al., BJOG, 2007; Bellamy et al., BMJ, 2007 |
+| Earlier guideline-correct antibiotic substitution in PCN-allergic GBS-positive mother | Avoided neonatal early-onset GBS sepsis (~0.23 per 1000 live births at baseline, with rates rising in PCN-allergic substitution failures) | CDC GBS Prevention Guidelines, MMWR 2010, updated 2019 |
+| Spanish-language counseling provided when needed | LEP patients without interpreter services have measurably worse adherence and 28 percent more readmissions across multiple settings | Karliner et al., Health Services Research, 2007 |
+
+**Per-detection cost (LLM and infrastructure):**
+
+- Approximately 25K to 35K input tokens (5 MCP tools plus 3 to 5 SearchSources retrievals) plus ~1K output tokens per full prep brief on a current-generation model.
+- At Claude Sonnet pricing, roughly $0.08 to $0.12 per brief. At GPT-4 class pricing, similar.
+- Railway hosting cost on the BAA-eligible tier: estimated $20 to $50 per month at hackathon-scale traffic.
+
+**Break-even math:**
+
+- One avoided NICU admission ($71,158 saved) pays for **~600,000 prep briefs**.
+- One avoided severe maternal morbidity event ($10,158 in incremental hospital costs avoided) pays for **~85,000 prep briefs**.
+- At a high-risk clinic serving 500 prenatal patients per year, even one avoided HELLP escalation across an entire patient panel covers years of MaternalGuard usage cost.
 
 **Why Prompt Opinion + MaternalGuard:**
-- Standards-based (MCP, A2A, FHIR R4, SHARP) — no vendor lock-in.
-- BYO-model — health systems pick the LLM that fits their BAA and spend profile.
-- Marketplace distribution — published once, invokable from any Prompt Opinion workspace.
-- Composable — MFM, NICU prep, Social Work, or PPD-screening agents can A2A-call MaternalGuard as context without re-reading the chart.
+
+- Standards-based (MCP, A2A, FHIR R4, SHARP), no vendor lock-in.
+- BYO-model so health systems pick the LLM that fits their BAA and spend profile.
+- Marketplace distribution: published once, invokable from any Prompt Opinion workspace.
+- Composable: MFM, NICU prep, Social Work, or PPD-screening agents can A2A-call MaternalGuard as context without re-reading the chart.
 
 ---
 
