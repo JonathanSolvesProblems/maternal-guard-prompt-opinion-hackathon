@@ -16,7 +16,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.3.3-input-fix-and-app-annotations",
+    version: "1.3.4-capability-extensions",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
@@ -70,6 +70,14 @@ app.post("/mcp", async (req, res) => {
         capabilities: {
           extensions: {
             "ai.promptopinion/fhir-context": {},
+            // Candidate extension URIs for prefab-ui rendering. The platform
+            // recognizes one of these (we hope) to mark this server as capable
+            // of returning prefab apps. Declaring multiple is harmless; the
+            // platform should ignore those it does not understand.
+            "ai.promptopinion/prefab-ui": {},
+            "ai.promptopinion/prefab": {},
+            "ai.promptopinion/app": {},
+            "prefab-ui": { version: "0.19" },
           },
         },
       },
