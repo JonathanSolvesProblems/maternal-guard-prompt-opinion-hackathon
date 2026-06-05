@@ -66,7 +66,9 @@ MaternalGuard is built on a clear architectural thesis, borrowed from the LoopGu
 
 Why split this way: rules give us auditability, reproducibility, and zero hallucination on safety-critical math. AI gives us the cross-domain synthesis that no rule engine can do. Putting them on opposite sides of the MCP boundary means each side is independently testable and replaceable.
 
-## The 7 Tools
+## The 9 Tools
+
+> MaternalGuard ships as **two MCP servers**: the TypeScript server in this repo (9 tools for data, write-back, and updates) plus an optional Python UI sidecar in [ui-server/](ui-server/) that renders an interactive morning-huddle dashboard inside Prompt Opinion's chat using the `prefab-ui` library. The Python sidecar is the same pattern the 2nd-place winner (LoopGuard Passport) used. See [ui-server/README.md](ui-server/README.md) for setup. The tools below are the TypeScript server's; the sidecar exposes one additional tool `OpenMaternalDashboard` that returns a rendered UI.
 
 | Tool | What it does | Key FHIR resources |
 |---|---|---|
@@ -77,6 +79,8 @@ Why split this way: rules give us auditability, reproducibility, and zero halluc
 | `PredictNeonatalImpact` | **Mother-baby dyad**: maps active maternal conditions and abnormal labs to projected neonatal outcomes (macrosomia, neonatal hypoglycemia, RDS, NICU admission, IUGR, etc.) and returns a gestational-age-specific neonatal readiness checklist. Each risk cites the relevant ACOG Practice Bulletin. | Condition, Observation |
 | `MaternalPanelScan` | **Cohort triage** (env-gated). Scans a bundled cohort of pregnant patients, applies the deterministic urgency classifier from `src/clinical/urgency-classifier.ts`, and returns a ranked triage queue with RED / YELLOW / GREEN urgency bands per patient. Designed for morning huddle and panel triage workflows. Operates on a bundled patient list configured via `MATERNALGUARD_BUNDLED_PATIENT_IDS`; does NOT enumerate a live workspace (live enumeration is a future Prompt Opinion platform feature). | Patient, Observation |
 | `ProposeMaternalAction` | **Governed FHIR write-back**. Drafts a FHIR Task and (optionally) a FHIR Flag for the patient with status set to draft (`Task.status=requested`, `Flag.status=inactive`) and writes a Provenance audit record. A clinician must change status to `accepted` / `active` before the action takes effect. Edit-restricted to coordination metadata (owner, due date, urgency band, clinician note); clinical content (rationale, guideline citation) is fixed. Dry-run by default; persists when `MATERNALGUARD_ENABLE_WRITEBACK=true`. | Task, Flag, Provenance |
+| `ListMaternalActions` | **Read-back tool**. Lists FHIR Tasks and Flags on the patient authored by MaternalGuard. Filterable by status (draft/active/completed/rejected). Returns each Task with status, priority, recommendation, owner, due date, clinician note; each Flag with category, finding, urgency band, review status. Surfaces what is pending clinician review. | Task, Flag |
+| `UpdateMaternalAction` | **State transitions on existing drafts**. Takes an `action` argument: `approve` (Task.status: requested → accepted), `reject` (with reason, status → rejected), `edit-coordination` (owner, due date via `dueWithinHours`, clinician note), `activate-flag` (Flag.status: inactive → active), or `dismiss-flag`. Writes Provenance for every change. Edit-restricted to coordination metadata; clinical content is never editable. Called both by chat-driven prompts and by the Python UI sidecar's button clicks. | Task, Flag, Provenance |
 
 All tools rely on **SHARP-on-MCP** headers (`X-FHIR-Server-URL`, `X-FHIR-Access-Token`, `X-Patient-ID`) which Prompt Opinion forwards automatically when a patient is selected and the agent has Patient Context enabled.
 
