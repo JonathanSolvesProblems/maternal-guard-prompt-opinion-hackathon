@@ -16,13 +16,18 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.0.0",
+    version: "1.1.1-duehoursfix",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
       "GenerateCarePlan",
       "InterpretLabTrends",
       "PredictNeonatalImpact",
+      ...(process.env["MATERNALGUARD_ENABLE_PANEL_SCAN"] === "true"
+        ? ["MaternalPanelScan"]
+        : []),
+      "ProposeMaternalAction",
+      "ListMaternalActions",
     ],
   });
 });

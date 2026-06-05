@@ -100,7 +100,7 @@ class InterpretLabTrendsTool implements IMcpTool {
             );
           }
 
-          const result = this._buildTrendData(observations, gestationalAgeWeeks);
+          const result = this._buildTrendData(observations, gestationalAgeWeeks ?? undefined);
           return McpUtilities.createJsonResponse(result);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

@@ -3,6 +3,9 @@ import { ScreenSocialDeterminantsToolInstance } from "./ScreenSocialDeterminants
 import { GenerateCarePlanToolInstance } from "./GenerateCarePlanTool";
 import { InterpretLabTrendsToolInstance } from "./InterpretLabTrendsTool";
 import { PredictNeonatalImpactToolInstance } from "./PredictNeonatalImpactTool";
+import { MaternalPanelScanToolInstance } from "./MaternalPanelScanTool";
+import { ProposeMaternalActionToolInstance } from "./ProposeMaternalActionTool";
+import { ListMaternalActionsToolInstance } from "./ListMaternalActionsTool";
 
 export {
   AssessMaternalRiskToolInstance,
@@ -10,4 +13,7 @@ export {
   GenerateCarePlanToolInstance,
   InterpretLabTrendsToolInstance,
   PredictNeonatalImpactToolInstance,
+  MaternalPanelScanToolInstance,
+  ProposeMaternalActionToolInstance,
+  ListMaternalActionsToolInstance,
 };

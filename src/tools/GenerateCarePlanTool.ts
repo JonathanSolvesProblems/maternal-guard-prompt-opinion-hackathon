@@ -68,7 +68,7 @@ class GenerateCarePlanTool implements IMcpTool {
             medications,
             existingCarePlans,
             riskLevel || "moderate",
-            gestationalAgeWeeks,
+            gestationalAgeWeeks ?? undefined,
           );
           return McpUtilities.createJsonResponse(result);
         } catch (error) {

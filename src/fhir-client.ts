@@ -31,10 +31,46 @@ class FhirClient {
     );
   }
 
+  async create<T extends DomainResource>(
+    req: Request,
+    resourceType: string,
+    body: object,
+  ) {
+    const fhirContext = this._getFhirContextOrThrow(req);
+    return await this._callAxios<T>(
+      {
+        method: "post",
+        url: this._addPath(fhirContext, resourceType),
+        data: body,
+        headers: { "Content-Type": "application/fhir+json" },
+      },
+      req,
+    );
+  }
+
+  async update<T extends DomainResource>(
+    req: Request,
+    resourceType: string,
+    id: string,
+    body: object,
+  ) {
+    const fhirContext = this._getFhirContextOrThrow(req);
+    return await this._callAxios<T>(
+      {
+        method: "put",
+        url: this._addPath(fhirContext, `${resourceType}/${id}`),
+        data: body,
+        headers: { "Content-Type": "application/fhir+json" },
+      },
+      req,
+    );
+  }
+
   private async _callAxios<T>(config: AxiosRequestConfig, req: Request) {
     const fhirContext = this._getFhirContextOrThrow(req);
     if (fhirContext.token) {
       config.headers = {
+        ...(config.headers || {}),
         Authorization: `Bearer ${fhirContext.token}`,
       };
     }
