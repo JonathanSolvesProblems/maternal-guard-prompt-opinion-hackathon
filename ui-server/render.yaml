@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: maternalguard-ui
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /mcp
+    envVars:
+      - key: PORT
+        value: 5001
+      - key: TRANSPORT
+        value: streamable-http
+      - key: HOST
+        value: 0.0.0.0
+      - key: MATERNALGUARD_BUNDLED_PATIENT_IDS
+        sync: false
