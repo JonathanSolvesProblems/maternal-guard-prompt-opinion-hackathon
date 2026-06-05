@@ -114,10 +114,17 @@ interface InputProps extends CommonProps {
   value?: string;
   placeholder?: string;
   maxLength?: number;
-  type?: "text" | "number" | "date";
+  inputType?: "text" | "number" | "date";
 }
 export function input(props: InputProps): PrefabNode {
-  return clean({ type: "Input", ...props });
+  // The HTML `type` attribute is exposed as `inputType` on our wrapper to avoid
+  // colliding with the component discriminator field (`type: "Input"`).
+  const { inputType, ...rest } = props;
+  return clean({
+    type: "Input",
+    ...rest,
+    ...(inputType ? { type_: inputType } : {}),
+  });
 }
 
 export type ButtonVariant = "default" | "secondary" | "destructive" | "outline" | "ghost" | "link" | "primary";

@@ -75,6 +75,21 @@ class OpenMaternalDashboardTool implements IMcpTool {
         description:
           "Renders the MaternalGuard interactive morning-huddle dashboard inline in the chat. Returns a Prefab UI: ranked cohort cards with RED/YELLOW/GREEN urgency bands, contributing clinical signals (HELLP-evolution, hypertensive BP, rising AST, falling platelets, proteinuria), and per-patient draft Tasks with Approve / Reject / Save-edits buttons plus draft Flags with Activate / Dismiss buttons. Button clicks route to UpdateMaternalAction. Use this tool when the user asks for 'morning huddle', 'open the dashboard', 'show the visual triage board', 'who needs attention today', or 'open the cohort view'.",
         inputSchema: {},
+        annotations: {
+          title: "MaternalGuard Morning Huddle",
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: false,
+          // Custom annotation hints in case the platform looks for any of these
+          // to recognize a prefab/app-rendering tool.
+          "ai.promptopinion/app": true,
+          "ai.promptopinion/prefab": true,
+          "ai.promptopinion/renderer": "prefab",
+          app: true,
+          prefab: true,
+          renderer: "prefab",
+        } as Record<string, unknown>,
       },
       async () => {
         // PRIMARY: the selected patient from SHARP headers.
@@ -264,7 +279,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
                   input({
                     name: `${prefix}_due_hours`,
                     value: "24",
-                    type: "number",
+                    inputType: "number",
                   }),
                 ]),
                 column({ gap: 1 }, [
