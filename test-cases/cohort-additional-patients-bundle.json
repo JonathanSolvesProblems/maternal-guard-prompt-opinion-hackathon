@@ -1,0 +1,428 @@
+{
+  "resourceType": "Bundle",
+  "type": "batch",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000001",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          { "system": "https://github.com/synthetichealth/synthea", "value": "lin-zhang-2026-002" },
+          { "system": "http://hospital.smarthealthit.org", "value": "MRN-LZ-002" }
+        ],
+        "meta": {
+          "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]
+        },
+        "name": [{ "use": "official", "family": "Zhang", "given": ["Lin"] }],
+        "gender": "female",
+        "birthDate": "1997-04-22",
+        "communication": [
+          {
+            "language": {
+              "coding": [
+                { "system": "urn:ietf:bcp:47", "code": "en", "display": "English" }
+              ]
+            },
+            "preferred": true
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "city": "Boston",
+            "state": "MA",
+            "postalCode": "02118",
+            "country": "US"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient",
+        "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|lin-zhang-2026-002"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000002",
+      "resource": {
+        "resourceType": "Condition",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000001" },
+        "clinicalStatus": {
+          "coding": [
+            { "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }
+          ]
+        },
+        "code": {
+          "coding": [
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "Z34.32", "display": "30 weeks gestation of pregnancy" }
+          ],
+          "text": "Normal pregnancy at 30 weeks"
+        },
+        "onsetDateTime": "2025-11-15"
+      },
+      "request": { "method": "POST", "url": "Condition" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000003",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000001" },
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              { "system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs" }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            { "system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel" }
+          ]
+        },
+        "component": [
+          {
+            "code": { "coding": [{ "system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure" }] },
+            "valueQuantity": { "value": 118, "unit": "mm[Hg]", "system": "http://unitsofmeasure.org" }
+          },
+          {
+            "code": { "coding": [{ "system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure" }] },
+            "valueQuantity": { "value": 75, "unit": "mm[Hg]", "system": "http://unitsofmeasure.org" }
+          }
+        ],
+        "effectiveDateTime": "2026-05-01"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000004",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000001" },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "1920-8", "display": "AST" }] },
+        "valueQuantity": { "value": 22, "unit": "U/L" },
+        "effectiveDateTime": "2026-04-20"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000005",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-100000000001" },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "777-3", "display": "Platelets" }] },
+        "valueQuantity": { "value": 240, "unit": "10*3/uL" },
+        "effectiveDateTime": "2026-04-20"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000001",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          { "system": "https://github.com/synthetichealth/synthea", "value": "amara-okonkwo-2026-003" },
+          { "system": "http://hospital.smarthealthit.org", "value": "MRN-AO-003" }
+        ],
+        "meta": {
+          "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]
+        },
+        "name": [{ "use": "official", "family": "Okonkwo", "given": ["Amara"] }],
+        "gender": "female",
+        "birthDate": "1991-09-03",
+        "communication": [
+          {
+            "language": {
+              "coding": [
+                { "system": "urn:ietf:bcp:47", "code": "en", "display": "English" }
+              ]
+            },
+            "preferred": true
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "city": "Atlanta",
+            "state": "GA",
+            "postalCode": "30310",
+            "country": "US"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient",
+        "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|amara-okonkwo-2026-003"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000002",
+      "resource": {
+        "resourceType": "Condition",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000001" },
+        "clinicalStatus": {
+          "coding": [
+            { "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }
+          ]
+        },
+        "code": {
+          "coding": [
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "O14.00", "display": "Mild to moderate preeclampsia, unspecified trimester" }
+          ],
+          "text": "Mild preeclampsia"
+        },
+        "onsetDateTime": "2026-04-01"
+      },
+      "request": { "method": "POST", "url": "Condition" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000003",
+      "resource": {
+        "resourceType": "Condition",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000001" },
+        "clinicalStatus": {
+          "coding": [
+            { "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }
+          ]
+        },
+        "code": {
+          "coding": [
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "Z34.32", "display": "33 weeks gestation of pregnancy" }
+          ],
+          "text": "Pregnancy at 33 weeks"
+        },
+        "onsetDateTime": "2025-10-25"
+      },
+      "request": { "method": "POST", "url": "Condition" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000004",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000001" },
+        "status": "final",
+        "category": [
+          { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs" }] }
+        ],
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel" }] },
+        "component": [
+          {
+            "code": { "coding": [{ "system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure" }] },
+            "valueQuantity": { "value": 138, "unit": "mm[Hg]", "system": "http://unitsofmeasure.org" }
+          },
+          {
+            "code": { "coding": [{ "system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure" }] },
+            "valueQuantity": { "value": 88, "unit": "mm[Hg]", "system": "http://unitsofmeasure.org" }
+          }
+        ],
+        "effectiveDateTime": "2026-04-18"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000005",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000001" },
+        "status": "final",
+        "category": [
+          { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs" }] }
+        ],
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel" }] },
+        "component": [
+          {
+            "code": { "coding": [{ "system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure" }] },
+            "valueQuantity": { "value": 144, "unit": "mm[Hg]", "system": "http://unitsofmeasure.org" }
+          },
+          {
+            "code": { "coding": [{ "system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure" }] },
+            "valueQuantity": { "value": 92, "unit": "mm[Hg]", "system": "http://unitsofmeasure.org" }
+          }
+        ],
+        "effectiveDateTime": "2026-05-02"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000006",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000001" },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "1920-8", "display": "AST" }] },
+        "valueQuantity": { "value": 32, "unit": "U/L" },
+        "effectiveDateTime": "2026-05-02"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000007",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000001" },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "777-3", "display": "Platelets" }] },
+        "valueQuantity": { "value": 175, "unit": "10*3/uL" },
+        "effectiveDateTime": "2026-05-02"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000008",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-200000000001" },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "2888-6", "display": "Protein [Mass/volume] in Urine" }] },
+        "valueQuantity": { "value": 32, "unit": "mg/dL" },
+        "effectiveDateTime": "2026-05-02"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000001",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          { "system": "https://github.com/synthetichealth/synthea", "value": "rachel-fisher-2026-004" },
+          { "system": "http://hospital.smarthealthit.org", "value": "MRN-RF-004" }
+        ],
+        "meta": {
+          "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]
+        },
+        "name": [{ "use": "official", "family": "Fisher", "given": ["Rachel"] }],
+        "gender": "female",
+        "birthDate": "1994-11-30",
+        "communication": [
+          {
+            "language": {
+              "coding": [
+                { "system": "urn:ietf:bcp:47", "code": "en", "display": "English" }
+              ]
+            },
+            "preferred": true
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "city": "Minneapolis",
+            "state": "MN",
+            "postalCode": "55404",
+            "country": "US"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient",
+        "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|rachel-fisher-2026-004"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000002",
+      "resource": {
+        "resourceType": "Condition",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000001" },
+        "clinicalStatus": {
+          "coding": [
+            { "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }
+          ]
+        },
+        "code": {
+          "coding": [
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "O24.410", "display": "Gestational diabetes mellitus in pregnancy, diet controlled" }
+          ],
+          "text": "Gestational diabetes (diet-controlled)"
+        },
+        "onsetDateTime": "2026-02-15"
+      },
+      "request": { "method": "POST", "url": "Condition" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000003",
+      "resource": {
+        "resourceType": "Condition",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000001" },
+        "clinicalStatus": {
+          "coding": [
+            { "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }
+          ]
+        },
+        "code": {
+          "coding": [
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "Z34.32", "display": "34 weeks gestation of pregnancy" }
+          ],
+          "text": "Pregnancy at 34 weeks"
+        },
+        "onsetDateTime": "2025-10-15"
+      },
+      "request": { "method": "POST", "url": "Condition" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000004",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000001" },
+        "status": "final",
+        "category": [
+          { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs" }] }
+        ],
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel" }] },
+        "component": [
+          {
+            "code": { "coding": [{ "system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure" }] },
+            "valueQuantity": { "value": 124, "unit": "mm[Hg]", "system": "http://unitsofmeasure.org" }
+          },
+          {
+            "code": { "coding": [{ "system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure" }] },
+            "valueQuantity": { "value": 78, "unit": "mm[Hg]", "system": "http://unitsofmeasure.org" }
+          }
+        ],
+        "effectiveDateTime": "2026-05-01"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000005",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000001" },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose" }] },
+        "valueQuantity": { "value": 105, "unit": "mg/dL" },
+        "effectiveDateTime": "2026-05-01"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000006",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000001" },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "1920-8", "display": "AST" }] },
+        "valueQuantity": { "value": 28, "unit": "U/L" },
+        "effectiveDateTime": "2026-05-01"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    },
+    {
+      "fullUrl": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000007",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": { "reference": "urn:uuid:b4f3a7e0-1a2b-4c5d-9e8f-300000000001" },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "777-3", "display": "Platelets" }] },
+        "valueQuantity": { "value": 215, "unit": "10*3/uL" },
+        "effectiveDateTime": "2026-05-01"
+      },
+      "request": { "method": "POST", "url": "Observation" }
+    }
+  ]
+}
