@@ -16,7 +16,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.3.1-inline-dashboard-wireprobe",
+    version: "1.3.2-dashboard-uses-sharp",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",

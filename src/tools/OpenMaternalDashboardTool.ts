@@ -77,18 +77,41 @@ class OpenMaternalDashboardTool implements IMcpTool {
         inputSchema: {},
       },
       async () => {
+        // PRIMARY: the selected patient from SHARP headers.
+        // OPTIONAL: a bundled cohort env var (used only if explicitly configured).
+        // The dashboard always works for the currently-selected patient without
+        // requiring any env-var configuration.
+        const selectedPatientId = FhirUtilities.getPatientIdIfContextExists(req);
         const bundled = (process.env[BUNDLED_PATIENT_IDS_ENV] ?? "")
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
 
-        const headerPatientId = FhirUtilities.getPatientIdIfContextExists(req);
-        const cohort = [
-          ...(headerPatientId && !bundled.includes(headerPatientId)
-            ? [headerPatientId]
-            : []),
-          ...bundled,
-        ];
+        const cohort: string[] = [];
+        if (selectedPatientId) cohort.push(selectedPatientId);
+        for (const id of bundled) {
+          if (!cohort.includes(id)) cohort.push(id);
+        }
+
+        if (cohort.length === 0) {
+          // No patient selected and no bundled cohort. Return an explanatory app.
+          const view = column({ gap: 4, cssClass: "p-6" }, [
+            heading("MaternalGuard Morning Huddle", 2),
+            alert({ variant: "warning" }, [
+              alertTitle("No patient context"),
+              alertDescription(
+                "Select a patient in this workspace, or configure MATERNALGUARD_BUNDLED_PATIENT_IDS for a multi-patient cohort. The dashboard then renders that patient or cohort.",
+              ),
+            ]),
+          ]);
+          return prefabAppToCallToolResult(
+            prefabApp({
+              title: "MaternalGuard Morning Huddle",
+              cssClass: "bg-slate-50 text-slate-950",
+              view,
+            }),
+          );
+        }
 
         const panel: PanelEntry[] = [];
         for (const pid of cohort) {
