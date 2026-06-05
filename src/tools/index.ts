@@ -6,6 +6,7 @@ import { PredictNeonatalImpactToolInstance } from "./PredictNeonatalImpactTool";
 import { MaternalPanelScanToolInstance } from "./MaternalPanelScanTool";
 import { ProposeMaternalActionToolInstance } from "./ProposeMaternalActionTool";
 import { ListMaternalActionsToolInstance } from "./ListMaternalActionsTool";
+import { UpdateMaternalActionToolInstance } from "./UpdateMaternalActionTool";
 
 export {
   AssessMaternalRiskToolInstance,
@@ -16,4 +17,5 @@ export {
   MaternalPanelScanToolInstance,
   ProposeMaternalActionToolInstance,
   ListMaternalActionsToolInstance,
+  UpdateMaternalActionToolInstance,
 };
