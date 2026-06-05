@@ -7,6 +7,7 @@ import { MaternalPanelScanToolInstance } from "./MaternalPanelScanTool";
 import { ProposeMaternalActionToolInstance } from "./ProposeMaternalActionTool";
 import { ListMaternalActionsToolInstance } from "./ListMaternalActionsTool";
 import { UpdateMaternalActionToolInstance } from "./UpdateMaternalActionTool";
+import { OpenMaternalDashboardToolInstance } from "./OpenMaternalDashboardTool";
 
 export {
   AssessMaternalRiskToolInstance,
@@ -18,4 +19,5 @@ export {
   ProposeMaternalActionToolInstance,
   ListMaternalActionsToolInstance,
   UpdateMaternalActionToolInstance,
+  OpenMaternalDashboardToolInstance,
 };
