@@ -16,7 +16,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.4.0-tool-meta-ui",
+    version: "1.4.1-prefab-renderer-resource",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
@@ -86,6 +86,45 @@ app.post("/mcp", async (req, res) => {
     for (const tool of Object.values<IMcpTool>(tools)) {
       tool.registerTool(server, req);
     }
+
+    // Register the prefab renderer resource that tools/_meta/ui/resourceUri
+    // points to. The platform fetches this resource via resources/read and
+    // mounts the returned HTML inside an iframe in the chat. The HTML is a
+    // tiny stub that loads the prefab renderer JS/CSS from jsDelivr; the
+    // bundled renderer then receives our PrefabApp JSON via the platform's
+    // postMessage bridge and draws the actual UI.
+    const PREFAB_RENDERER_HTML = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prefab</title>
+  <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/@prefecthq/prefab-ui@0.19.1/dist/app/renderer.css">
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@prefecthq/prefab-ui@0.19.1/dist/app/renderer.js"></script>
+</body>
+</html>`;
+
+    server.registerResource(
+      "prefab-renderer",
+      "ui://prefab/renderer.html",
+      {
+        title: "Prefab UI Renderer",
+        description: "Prefab UI renderer iframe target for MCP App tools",
+        mimeType: "text/html",
+      },
+      async (uri) => ({
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: "text/html",
+            text: PREFAB_RENDERER_HTML,
+          },
+        ],
+      }),
+    );
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
