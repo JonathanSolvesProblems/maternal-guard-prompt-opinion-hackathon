@@ -16,7 +16,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.4.2-dashboard-mode-param",
+    version: "1.4.3-token-debug",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
@@ -56,9 +56,13 @@ app.post("/mcp", async (req, res) => {
     console.log(
       `[MCP] method=${method} | x-patient-id=${patientId || "MISSING"} | x-fhir-server-url=${fhirUrl || "MISSING"}`,
     );
-    const hasToken = !!req.headers["x-fhir-access-token"];
+    const rawToken = req.headers["x-fhir-access-token"];
+    const hasToken = !!rawToken;
+    const tokenLen = rawToken ? String(rawToken).length : 0;
     if (req.body?.params?.name) {
-      console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(req.body.params.arguments || {})} token=${hasToken ? "YES" : "NO"}`);
+      console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(req.body.params.arguments || {})} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
+    } else {
+      console.log(`[MCP]   non-tool method; token=${hasToken ? `YES(len=${tokenLen})` : "NO"} patient-id=${req.headers["x-patient-id"] || "MISSING"}`);
     }
 
     const server = new McpServer(
