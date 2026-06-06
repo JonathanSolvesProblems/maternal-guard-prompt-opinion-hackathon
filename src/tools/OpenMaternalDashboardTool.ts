@@ -81,15 +81,20 @@ class OpenMaternalDashboardTool implements IMcpTool {
           destructiveHint: false,
           idempotentHint: false,
           openWorldHint: false,
-          // Custom annotation hints in case the platform looks for any of these
-          // to recognize a prefab/app-rendering tool.
-          "ai.promptopinion/app": true,
-          "ai.promptopinion/prefab": true,
-          "ai.promptopinion/renderer": "prefab",
-          app: true,
-          prefab: true,
-          renderer: "prefab",
-        } as Record<string, unknown>,
+        },
+        // Per fastmcp source (FastMCPApp.ui decorator → tool._meta):
+        //   _meta.ui.resourceUri = "ui://prefab/renderer.html"
+        //   _meta.fastmcp.app    = <app name>
+        // Prompt Opinion reads tool._meta from the tools/list response to know
+        // this tool returns a prefab UI app that should be rendered inline.
+        _meta: {
+          ui: {
+            resourceUri: "ui://prefab/renderer.html",
+          },
+          fastmcp: {
+            app: "MaternalGuard Morning Huddle",
+          },
+        },
       },
       async () => {
         // PRIMARY: the selected patient from SHARP headers.

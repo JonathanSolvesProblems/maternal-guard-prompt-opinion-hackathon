@@ -16,7 +16,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.3.4-capability-extensions",
+    version: "1.4.0-tool-meta-ui",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
