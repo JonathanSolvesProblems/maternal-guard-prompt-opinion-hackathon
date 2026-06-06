@@ -73,8 +73,16 @@ class OpenMaternalDashboardTool implements IMcpTool {
       "OpenMaternalDashboard",
       {
         description:
-          "Renders the MaternalGuard interactive morning-huddle dashboard inline in the chat. Returns a Prefab UI: ranked cohort cards with RED/YELLOW/GREEN urgency bands, contributing clinical signals (HELLP-evolution, hypertensive BP, rising AST, falling platelets, proteinuria), and per-patient draft Tasks with Approve / Reject / Save-edits buttons plus draft Flags with Activate / Dismiss buttons. Button clicks route to UpdateMaternalAction. Use this tool when the user asks for 'morning huddle', 'open the dashboard', 'show the visual triage board', 'who needs attention today', or 'open the cohort view'.",
-        inputSchema: {},
+          "Renders the MaternalGuard interactive morning-huddle dashboard inline in the chat. Returns a Prefab UI: ranked cohort cards with RED/YELLOW/GREEN urgency bands, contributing clinical signals (HELLP-evolution, hypertensive BP, rising AST, falling platelets, proteinuria), and per-patient draft Tasks with Approve / Reject / Save-edits buttons plus draft Flags with Activate / Dismiss buttons. Button clicks route to UpdateMaternalAction. Use this tool when the user asks for 'morning huddle', 'open the dashboard', 'show the visual triage board', 'who needs attention today', or 'open the cohort view'. Pass mode='default' to launch the standard morning-huddle view.",
+        inputSchema: {
+          mode: z
+            .enum(["default", "morning-huddle", "cohort"])
+            .nullable()
+            .describe(
+              "Which dashboard view to render. Always pass 'default' unless you have a specific reason to choose another.",
+            )
+            .optional(),
+        },
         annotations: {
           title: "MaternalGuard Morning Huddle",
           readOnlyHint: false,
@@ -96,7 +104,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
           },
         },
       },
-      async () => {
+      async (_input) => {
         // PRIMARY: the selected patient from SHARP headers.
         // OPTIONAL: a bundled cohort env var (used only if explicitly configured).
         // The dashboard always works for the currently-selected patient without

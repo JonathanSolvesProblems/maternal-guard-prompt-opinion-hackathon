@@ -54,9 +54,9 @@ class MaternalPanelScanTool implements IMcpTool {
             .describe("Filter results to only this urgency band. Default: ALL.")
             .optional(),
           maxResults: z
-            .number()
+            .union([z.number(), z.string()])
             .nullable()
-            .describe("Cap the number of patients returned. Default: 25.")
+            .describe("Cap the number of patients returned. Pass as a number, not a string. Default: 25.")
             .optional(),
         },
       },
@@ -161,7 +161,14 @@ class MaternalPanelScanTool implements IMcpTool {
 
           filtered.sort((a, b) => b.urgency.score - a.urgency.score);
 
-          const cap = maxResults ?? 25;
+          // Coerce stringified numbers (some LLMs send "25" instead of 25).
+          const capNum =
+            typeof maxResults === "number"
+              ? maxResults
+              : typeof maxResults === "string" && maxResults.trim() !== ""
+                ? Number(maxResults)
+                : 25;
+          const cap = !isNaN(capNum) && capNum > 0 ? capNum : 25;
           const ranked = filtered.slice(0, cap);
 
           return McpUtilities.createJsonResponse({
