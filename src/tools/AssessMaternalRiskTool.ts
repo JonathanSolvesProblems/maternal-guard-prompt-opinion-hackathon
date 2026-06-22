@@ -29,7 +29,6 @@ const HIGH_RISK_CONDITIONS: Array<{ prefix: string; acog: string }> = [
   { prefix: "D68", acog: "ACOG PB #197 (Thromboembolism in Pregnancy)" },
   { prefix: "O09.1", acog: "ACOG recurrent pregnancy loss guidance" },
 ];
-const HIGH_RISK_CONDITION_CODES = new Set(HIGH_RISK_CONDITIONS.map((c) => c.prefix));
 
 class AssessMaternalRiskTool implements IMcpTool {
   registerTool(server: McpServer, req: Request) {

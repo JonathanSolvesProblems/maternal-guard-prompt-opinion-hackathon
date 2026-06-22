@@ -16,7 +16,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.4.3-token-debug",
+    version: "1.5.0-cleanup",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
@@ -74,14 +74,12 @@ app.post("/mcp", async (req, res) => {
         capabilities: {
           extensions: {
             "ai.promptopinion/fhir-context": {},
-            // Candidate extension URIs for prefab-ui rendering. The platform
-            // recognizes one of these (we hope) to mark this server as capable
-            // of returning prefab apps. Declaring multiple is harmless; the
-            // platform should ignore those it does not understand.
-            "ai.promptopinion/prefab-ui": {},
-            "ai.promptopinion/prefab": {},
-            "ai.promptopinion/app": {},
-            "prefab-ui": { version: "0.19" },
+            // NOTE: a prefab-ui / app capability extension URI is likely also
+            // needed for Prompt Opinion to mount OpenMaternalDashboard's
+            // PrefabApp inline. The four candidates we tried earlier did NOT
+            // surface as "Supported" badges in the platform UI (the way
+            // fhir-context does), so we have removed them. Waiting on the
+            // correct URI from Prompt Opinion before re-adding.
           },
         },
       },

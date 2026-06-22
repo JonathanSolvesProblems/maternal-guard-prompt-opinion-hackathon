@@ -208,37 +208,22 @@ export function prefabApp(opts: PrefabAppOpts): Record<string, unknown> {
 }
 
 // Wrap a PrefabApp payload into an MCP CallToolResult.
-// We do not know exactly which content type Prompt Opinion picks up. Emit FOUR
-// variants in parallel so at least one matches what the platform expects:
-//   (1) embedded resource content with a prefab MIME type
-//   (2) plain text content with the serialized JSON
-//   (3) structuredContent at the top of the result
-//   (4) a custom _meta block hinting at the renderer
-// Once we observe which one renders, we can prune the others.
+// The render trigger lives on the TOOL DEFINITION (tool._meta with ui.resourceUri
+// and fastmcp.app), not on the response. So the response itself just carries
+// the serialized PrefabApp twice: once as text content (legacy fastmcp wire),
+// once as structuredContent (current MCP convention). Platforms pick whichever
+// they support.
 import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 
 export function prefabAppToCallToolResult(appPayload: Record<string, unknown>): CallToolResult {
-  const serialized = JSON.stringify(appPayload);
   return {
     content: [
       {
-        type: "resource" as const,
-        resource: {
-          uri: "prefab://app",
-          mimeType: "application/vnd.prefab.app+json",
-          text: serialized,
-        },
-      },
-      {
         type: "text" as const,
-        text: serialized,
+        text: JSON.stringify(appPayload),
       },
     ],
     structuredContent: appPayload,
-    _meta: {
-      "ai.promptopinion/renderer": "prefab",
-      "ai.promptopinion/app-version": "0.19",
-    },
     isError: false,
   };
 }
