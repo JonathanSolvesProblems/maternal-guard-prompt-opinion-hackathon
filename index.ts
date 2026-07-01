@@ -16,7 +16,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.5.0-cleanup",
+    version: "1.6.0-render-fixes",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
@@ -60,9 +60,20 @@ app.post("/mcp", async (req, res) => {
     const hasToken = !!rawToken;
     const tokenLen = rawToken ? String(rawToken).length : 0;
     if (req.body?.params?.name) {
-      console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(req.body.params.arguments || {})} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
+      // Log only the KEYS of the arguments; values may include PHI (patient
+      // IDs, clinician notes, free-text rationale). Enable value logging by
+      // setting MATERNALGUARD_DEBUG_ARGS=true; keep OFF in production.
+      const argKeys = Object.keys(req.body.params.arguments || {});
+      if (process.env["MATERNALGUARD_DEBUG_ARGS"] === "true") {
+        console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(req.body.params.arguments || {})} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
+      } else {
+        console.log(`[MCP]   tool=${req.body.params.name} argKeys=[${argKeys.join(",")}] token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
+      }
     } else {
-      console.log(`[MCP]   non-tool method; token=${hasToken ? `YES(len=${tokenLen})` : "NO"} patient-id=${req.headers["x-patient-id"] || "MISSING"}`);
+      // Log presence of patient-id, not the value, so patient identifiers do
+      // not leak into stdout logs.
+      const hasPatientId = !!req.headers["x-patient-id"];
+      console.log(`[MCP]   non-tool method; token=${hasToken ? `YES(len=${tokenLen})` : "NO"} patient-id=${hasPatientId ? "PRESENT" : "MISSING"}`);
     }
 
     const server = new McpServer(
@@ -71,15 +82,22 @@ app.post("/mcp", async (req, res) => {
         version: "1.0.0",
       },
       {
+        instructions: [
+          "MaternalGuard is a maternal-health decision-support MCP server. All outputs are draft and require clinician review before any action.",
+          "",
+          "TOOL CHOICE (especially in Prompt Opinion): If the user asks for the morning huddle, dashboard, GUI, interactive UI, visual triage board, cohort view, panel view, or anything like 'who needs attention today' / 'show me the visual' / 'open the board' — you MUST call OpenMaternalDashboard. It returns an interactive in-chat UI with per-patient cards, urgency bands, and Approve/Reject/Save-edits/Activate/Dismiss buttons wired to UpdateMaternalAction.",
+          "",
+          "Do NOT use AssessMaternalRisk, InterpretLabTrends, MaternalPanelScan, or GenerateCarePlan for those requests. Those tools return JSON summaries only. They do NOT render UI. If the user's ask is about a visual dashboard or interactive workflow, prefer OpenMaternalDashboard.",
+          "",
+          "For a full CLINICAL BRIEF ('prep me for tomorrow', 'summarize this patient', 'cite guidelines for X'), run the 5 data tools (AssessMaternalRisk, InterpretLabTrends, ScreenSocialDeterminants, GenerateCarePlan, PredictNeonatalImpact) plus SearchSources, and produce the structured brief. That flow is separate from the dashboard flow.",
+          "",
+          "For action coordination on drafts (list pending, propose, approve, reject, edit owner, change due date, activate flag, dismiss flag), use ListMaternalActions, ProposeMaternalAction, and UpdateMaternalAction directly. No 5-tool prep is required for those.",
+          "",
+          "Every response must end with: 'Clinician review required before any action.'",
+        ].join("\n"),
         capabilities: {
           extensions: {
             "ai.promptopinion/fhir-context": {},
-            // NOTE: a prefab-ui / app capability extension URI is likely also
-            // needed for Prompt Opinion to mount OpenMaternalDashboard's
-            // PrefabApp inline. The four candidates we tried earlier did NOT
-            // surface as "Supported" badges in the platform UI (the way
-            // fhir-context does), so we have removed them. Waiting on the
-            // correct URI from Prompt Opinion before re-adding.
           },
         },
       },
@@ -109,19 +127,40 @@ app.post("/mcp", async (req, res) => {
 </body>
 </html>`;
 
+    // Renderer resource. Two things learned from LoopGuard's live wire:
+    //   1. mimeType MUST be "text/html;profile=mcp-app" (the profile param is
+    //      how Prompt Opinion discovers app-renderer resources; plain
+    //      "text/html" is not recognized).
+    //   2. Resource _meta.ui.csp.resourceDomains lists which external origins
+    //      the sandboxed iframe is allowed to load from. Without it, the
+    //      iframe CSP blocks the jsDelivr CDN scripts our stub loads.
     server.registerResource(
       "prefab-renderer",
       "ui://prefab/renderer.html",
       {
         title: "Prefab UI Renderer",
         description: "Prefab UI renderer iframe target for MCP App tools",
-        mimeType: "text/html",
+        mimeType: "text/html;profile=mcp-app",
+        _meta: {
+          ui: {
+            csp: {
+              resourceDomains: ["https://cdn.jsdelivr.net"],
+            },
+          },
+        },
       },
       async (uri) => ({
         contents: [
           {
             uri: uri.href,
-            mimeType: "text/html",
+            mimeType: "text/html;profile=mcp-app",
+            _meta: {
+              ui: {
+                csp: {
+                  resourceDomains: ["https://cdn.jsdelivr.net"],
+                },
+              },
+            },
             text: PREFAB_RENDERER_HTML,
           },
         ],

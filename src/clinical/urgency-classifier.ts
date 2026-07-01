@@ -85,9 +85,18 @@ function isFastingGlucose(code: string) {
   return LOINC.FASTING_GLUCOSE.some((c) => code.startsWith(c));
 }
 
+// Only include readings with a real date. Empty-string dates would sort
+// first as strings (`"" < "2026-..."`) and be treated as the earliest
+// reading, corrupting the first-to-last delta used for rising/falling
+// trend detection (would spuriously trigger or suppress HELLP-evolution).
+function withDate<T extends { date: string }>(items: T[]): T[] {
+  return items.filter((it) => typeof it.date === "string" && it.date.length > 0);
+}
+
 function latest<T extends { date: string }>(items: T[]): T | null {
-  if (!items.length) return null;
-  const sorted = [...items].sort((a, b) => b.date.localeCompare(a.date));
+  const withDates = withDate(items);
+  if (!withDates.length) return null;
+  const sorted = [...withDates].sort((a, b) => b.date.localeCompare(a.date));
   return sorted[0];
 }
 
@@ -102,7 +111,7 @@ function trend(values: number[]): "rising" | "falling" | "stable" {
 }
 
 function chronological(labs: LabReading[]): LabReading[] {
-  return [...labs].sort((a, b) => a.date.localeCompare(b.date));
+  return [...withDate(labs)].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**
@@ -140,7 +149,7 @@ export function classifyUrgency(input: UrgencyInput): UrgencyAssessment {
       score += 25;
     }
 
-    const sortedBp = [...input.bpReadings].sort((a, b) =>
+    const sortedBp = withDate(input.bpReadings).sort((a, b) =>
       a.date.localeCompare(b.date),
     );
     if (sortedBp.length >= 2) {

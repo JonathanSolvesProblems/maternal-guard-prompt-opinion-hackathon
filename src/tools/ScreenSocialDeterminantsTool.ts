@@ -14,7 +14,7 @@ class ScreenSocialDeterminantsTool implements IMcpTool {
       "ScreenSocialDeterminants",
       {
         description:
-          "SDOH screening from FHIR. Returns demographics, insurance, language, social history observations, and flagged barriers (no insurance, non-English primary language, missing contact info, absent screening).",
+          "SDOH screening from FHIR. Returns demographics, insurance, language, social history observations, and flagged barriers (no insurance, non-English primary language, missing contact info, absent screening). Returns JSON only. NOT for interactive dashboards — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()

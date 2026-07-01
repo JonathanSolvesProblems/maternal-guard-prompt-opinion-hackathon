@@ -46,7 +46,7 @@ class MaternalPanelScanTool implements IMcpTool {
       "MaternalPanelScan",
       {
         description:
-          "Scans a bundled cohort of pregnant patients, classifies maternal urgency (RED / YELLOW / GREEN) using deterministic rules from vitals + labs, and returns a ranked triage queue. Use for morning huddle and panel triage. Does NOT enumerate a live workspace — operates on the bundled patient list configured via MATERNALGUARD_BUNDLED_PATIENT_IDS.",
+          "Scans a bundled cohort of pregnant patients, classifies maternal urgency (RED / YELLOW / GREEN) using deterministic rules from vitals + labs, and returns a ranked triage queue as JSON. NOT for interactive dashboards or visual triage boards — for those, call OpenMaternalDashboard instead (which uses the same classifier but renders in-chat UI with Approve/Reject/Save-edits buttons). Use MaternalPanelScan only when the user explicitly asks for the queue as JSON/text output. Does NOT enumerate a live workspace — operates on the bundled patient list configured via MATERNALGUARD_BUNDLED_PATIENT_IDS.",
         inputSchema: {
           band: z
             .enum(["RED", "YELLOW", "GREEN", "ALL"])

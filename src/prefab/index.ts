@@ -198,21 +198,30 @@ export function prefabApp(opts: PrefabAppOpts): Record<string, unknown> {
     ? { type: "Column", children: opts.view }
     : opts.view;
 
+  // Wire shape learned from LoopGuard's live capture:
+  //   { "$prefab": { "version": "0.2" }, "view": {...}, "state": {...} }
+  // The `$prefab` field is an object with a `version` key (the renderer JS
+  // validates `payload.$prefab.version`). Earlier we emitted a bare string,
+  // which failed that validation and caused silent blank iframes.
+  // We omit `title` and `defs` because LoopGuard omits them too; the
+  // envelope keys are exactly [$prefab, view, state].
   return clean({
-    $prefab: "0.19",
-    title: opts.title,
+    $prefab: { version: "0.2" },
     view,
     state: opts.state ?? {},
-    defs: opts.defs ?? {},
   });
 }
 
 // Wrap a PrefabApp payload into an MCP CallToolResult.
-// The render trigger lives on the TOOL DEFINITION (tool._meta with ui.resourceUri
-// and fastmcp.app), not on the response. So the response itself just carries
-// the serialized PrefabApp twice: once as text content (legacy fastmcp wire),
-// once as structuredContent (current MCP convention). Platforms pick whichever
-// they support.
+//
+// LoopGuard's live wire shows the tool result carries:
+//   - content: [{ type: "text", text: "[Rendered Prefab UI]" }]  <-- stub placeholder
+//   - structuredContent: <the $prefab envelope>                  <-- canonical channel
+//   - isError: false
+// The renderer reads structuredContent, not content. content is only a
+// fallback for non-UI clients. We match that shape exactly. Placing the
+// full JSON in content.text (as we did before) may make Prompt Opinion
+// treat the tool as a text-returning tool and skip the UI mount.
 import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 
 export function prefabAppToCallToolResult(appPayload: Record<string, unknown>): CallToolResult {
@@ -220,7 +229,7 @@ export function prefabAppToCallToolResult(appPayload: Record<string, unknown>): 
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(appPayload),
+        text: "[Rendered Prefab UI]",
       },
     ],
     structuredContent: appPayload,

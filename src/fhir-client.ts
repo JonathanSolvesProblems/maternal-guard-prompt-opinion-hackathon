@@ -78,9 +78,23 @@ class FhirClient {
       const response = await axios(config);
       return response.data as T;
     } catch (error) {
-      console.error(error);
-      if (isAxiosError(error) && error.response?.status === 404) {
-        return null;
+      // Do NOT log the raw AxiosError. It dumps the full request config
+      // (including the Authorization bearer token) and the response body
+      // (which may include PHI). Log only method + redacted URL + status.
+      if (isAxiosError(error)) {
+        const method = error.config?.method?.toUpperCase() ?? "?";
+        const url = error.config?.url ?? "";
+        const redactedUrl = url
+          .replace(/\/Patient\/[^/?]+/g, "/Patient/[REDACTED]")
+          .replace(/patient=[^&]+/g, "patient=[REDACTED]")
+          .replace(/subject=Patient\/[^&]+/g, "subject=Patient/[REDACTED]");
+        const status = error.response?.status ?? "?";
+        console.error(`[FhirClient] ${method} ${redactedUrl} → ${status}`);
+        if (error.response?.status === 404) {
+          return null;
+        }
+      } else {
+        console.error(`[FhirClient] non-axios error: ${error instanceof Error ? error.message : "unknown"}`);
       }
       throw error;
     }

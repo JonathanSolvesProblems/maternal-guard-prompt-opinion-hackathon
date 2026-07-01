@@ -36,7 +36,7 @@ class AssessMaternalRiskTool implements IMcpTool {
       "AssessMaternalRisk",
       {
         description:
-          "Maternal risk assessment from FHIR. Returns demographics, active conditions, recent vitals/labs, meds, and risk flags for preeclampsia/GDM/preterm birth/PPH.",
+          "Maternal risk assessment from FHIR. Returns demographics, active conditions, recent vitals/labs, meds, and risk flags for preeclampsia/GDM/preterm birth/PPH. Returns JSON only. NOT for interactive dashboards / visual triage boards / morning huddles — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()
@@ -116,8 +116,13 @@ class AssessMaternalRiskTool implements IMcpTool {
         : null,
     };
 
-    // Flag advanced maternal age
-    const ageRiskFlag = age !== null && age >= 35 ? "Advanced maternal age (>=35)" : null;
+    // Flag advanced maternal age. Only apply to female patients, since
+    // "advanced maternal age" is only clinically meaningful in a
+    // pregnancy context. If gender is unknown, do not fabricate the flag.
+    const ageRiskFlag =
+      age !== null && age >= 35 && (patient.gender ?? "").toLowerCase() === "female"
+        ? "Advanced maternal age (>=35)"
+        : null;
 
     // Parse conditions and flag high-risk ones
     const activeConditions: Array<{

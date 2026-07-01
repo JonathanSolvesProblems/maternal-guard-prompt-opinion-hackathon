@@ -48,7 +48,7 @@ class InterpretLabTrendsTool implements IMcpTool {
       "InterpretLabTrends",
       {
         description:
-          "Longitudinal lab/vital trends from FHIR with pregnancy reference ranges. Supports: blood-pressure, glucose, fasting-glucose, hemoglobin, hematocrit, platelets, proteinuria, uric-acid, ast, alt, weight.",
+          "Longitudinal lab/vital trends from FHIR with pregnancy reference ranges. Supports: blood-pressure, glucose, fasting-glucose, hemoglobin, hematocrit, platelets, proteinuria, uric-acid, ast, alt, weight. Returns JSON only. NOT for interactive dashboards / visual triage boards — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()
@@ -82,6 +82,17 @@ class InterpretLabTrendsTool implements IMcpTool {
                 .map((lt) => LOINC_CODES[lt]!.code)
             : Object.values(LOINC_CODES).map((v) => v.code);
 
+          if (codesToQuery.length === 0) {
+            // All requested lab types were unrecognized. Explain to the model
+            // rather than issuing a malformed `code=` FHIR search.
+            return McpUtilities.createJsonResponse({
+              patientId,
+              trends: [],
+              note: "None of the requested labTypes are recognized. Choose from: " +
+                Object.keys(LOINC_CODES).join(", "),
+            });
+          }
+
           const observations = await FhirClientInstance.search(
             req,
             "Observation",
@@ -94,10 +105,16 @@ class InterpretLabTrendsTool implements IMcpTool {
           );
 
           if (!observations?.entry?.length) {
-            return McpUtilities.createTextResponse(
-              "No observation data found for the requested lab types.",
-              { isError: true },
-            );
+            // Empty result is NOT an error. Report it as a normal response so
+            // the model treats "no data yet" as a data state, not a tool
+            // failure.
+            return McpUtilities.createJsonResponse({
+              patientId,
+              gestationalAgeWeeks: gestationalAgeWeeks ?? null,
+              requestedLabTypes: codesToQuery,
+              trends: [],
+              note: "No matching observations found for the requested lab types on this patient.",
+            });
           }
 
           const result = this._buildTrendData(observations, gestationalAgeWeeks ?? undefined);

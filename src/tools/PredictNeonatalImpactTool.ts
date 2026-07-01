@@ -204,7 +204,7 @@ class PredictNeonatalImpactTool implements IMcpTool {
       "PredictNeonatalImpact",
       {
         description:
-          "Predicts neonatal/newborn risk implications from the pregnant patient's current maternal FHIR data (conditions + recent labs + gestational age). Returns structured neonatal risk projections with ACOG references so the platform AI can brief both OB and pediatric/NICU teams.",
+          "Predicts neonatal/newborn risk implications from the pregnant patient's current maternal FHIR data (conditions + recent labs + gestational age). Returns structured neonatal risk projections with ACOG references so the platform AI can brief both OB and pediatric/NICU teams. Returns JSON only. NOT for interactive dashboards — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()

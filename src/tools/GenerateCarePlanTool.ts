@@ -14,7 +14,7 @@ class GenerateCarePlanTool implements IMcpTool {
       "GenerateCarePlan",
       {
         description:
-          "Care plan context from FHIR: conditions, allergies, meds, existing care plans, and ACOG-aligned screening recommendations for the gestational age and risk level.",
+          "Care plan context from FHIR: conditions, allergies, meds, existing care plans, and ACOG-aligned screening recommendations for the gestational age and risk level. Returns JSON only. NOT for interactive dashboards or visual triage boards — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()

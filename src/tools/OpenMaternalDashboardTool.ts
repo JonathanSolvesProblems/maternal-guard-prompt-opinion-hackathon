@@ -67,13 +67,50 @@ function isMaternalGuardFlag(f: fhirR4.Flag): boolean {
   );
 }
 
+// Resolve current gestational age (weeks) from the pregnancy Condition. We
+// look for ICD-10 Z34.* ("Encounter for supervision of normal pregnancy") on
+// the Condition and use its onsetDateTime as the effective LMP (assuming a
+// term of 40 weeks). Returns null if no such Condition is found.
+function _gestationalAgeFromConditions(
+  bundle: fhirR4.Bundle | undefined,
+): number | null {
+  if (!bundle?.entry?.length) return null;
+  for (const e of bundle.entry) {
+    const c = e.resource as fhirR4.Condition | undefined;
+    const code = c?.code?.coding?.find((cc) =>
+      (cc.code ?? "").toUpperCase().startsWith("Z34"),
+    )?.code;
+    if (!code) continue;
+    const onset = c?.onsetDateTime;
+    if (!onset) continue;
+    const start = new Date(onset).getTime();
+    if (Number.isNaN(start)) continue;
+    const now = Date.now();
+    const weeks = Math.floor((now - start) / (7 * 24 * 3600 * 1000));
+    if (weeks < 0 || weeks > 45) continue;
+    return weeks;
+  }
+  return null;
+}
+
+// Compute the whole hours between now and a Task's restriction period end.
+// Falls back to 24 when the Task has no due date. Never returns negative.
+function _dueHoursFromTask(task: fhirR4.Task): string {
+  const end = task.restriction?.period?.end;
+  if (!end) return "24";
+  const dueMs = new Date(end).getTime();
+  if (Number.isNaN(dueMs)) return "24";
+  const diffH = Math.round((dueMs - Date.now()) / 3600_000);
+  return String(Math.max(0, diffH));
+}
+
 class OpenMaternalDashboardTool implements IMcpTool {
   registerTool(server: McpServer, req: Request) {
     server.registerTool(
       "OpenMaternalDashboard",
       {
         description:
-          "Renders the MaternalGuard interactive morning-huddle dashboard inline in the chat. Returns a Prefab UI: ranked cohort cards with RED/YELLOW/GREEN urgency bands, contributing clinical signals (HELLP-evolution, hypertensive BP, rising AST, falling platelets, proteinuria), and per-patient draft Tasks with Approve / Reject / Save-edits buttons plus draft Flags with Activate / Dismiss buttons. Button clicks route to UpdateMaternalAction. Use this tool when the user asks for 'morning huddle', 'open the dashboard', 'show the visual triage board', 'who needs attention today', or 'open the cohort view'. Pass mode='default' to launch the standard morning-huddle view.",
+          "**Use this for the interactive MaternalGuard Morning Huddle dashboard** (Prefab MCP App / in-chat visual UI in Prompt Opinion). Renders inline in the chat with ranked cohort cards (RED/YELLOW/GREEN urgency bands), contributing clinical signals (HELLP-evolution, hypertensive BP, rising AST, falling platelets, proteinuria), and per-patient draft Tasks with Approve / Reject / Save-edits buttons plus draft Flags with Activate / Dismiss buttons. Button clicks route to UpdateMaternalAction. **Prefer this over AssessMaternalRisk, InterpretLabTrends, ScreenSocialDeterminants, GenerateCarePlan, PredictNeonatalImpact, and MaternalPanelScan whenever the user wants a visual dashboard, morning huddle, triage board, panel view, cohort view, or GUI.** Do not confuse: OpenMaternalDashboard = interactive UI; the others = JSON summaries. Pass mode='default' to launch the standard morning-huddle view.",
         inputSchema: {
           mode: z
             .enum(["default", "morning-huddle", "cohort"])
@@ -83,23 +120,23 @@ class OpenMaternalDashboardTool implements IMcpTool {
             )
             .optional(),
         },
-        annotations: {
-          title: "MaternalGuard Morning Huddle",
-          readOnlyHint: false,
-          destructiveHint: false,
-          idempotentHint: false,
-          openWorldHint: false,
-        },
-        // Per fastmcp source (FastMCPApp.ui decorator → tool._meta):
+        // Per fastmcp source (FastMCPApp.ui decorator → tool._meta), plus
+        // LoopGuard's live wire capture:
         //   _meta.ui.resourceUri = "ui://prefab/renderer.html"
+        //   _meta.ui.visibility  = ["model"]
         //   _meta.fastmcp.app    = <app name>
-        // Prompt Opinion reads tool._meta from the tools/list response to know
-        // this tool returns a prefab UI app that should be rendered inline.
+        //   _meta.fastmcp.tags   = []
+        // Note: no `annotations` block and no `execution` block, matching
+        // LoopGuard's open_passport_app exactly. LoopGuard's UI tool has
+        // neither; both fields were removed here because our observed
+        // rendering behavior matched LoopGuard best without them.
         _meta: {
           ui: {
             resourceUri: "ui://prefab/renderer.html",
+            visibility: ["model"],
           },
           fastmcp: {
+            tags: [],
             app: "MaternalGuard Morning Huddle",
           },
         },
@@ -141,84 +178,103 @@ class OpenMaternalDashboardTool implements IMcpTool {
           );
         }
 
-        const panel: PanelEntry[] = [];
-        for (const pid of cohort) {
-          try {
-            const [patient, obs, tasks, flags] = await Promise.all([
-              FhirClientInstance.read<fhirR4.Patient>(req, `Patient/${pid}`),
-              FhirClientInstance.search(req, "Observation", [
-                `patient=${pid}`,
-                "_count=100",
-                "_sort=-date",
-              ]),
-              FhirClientInstance.search(req, "Task", [
-                `subject=Patient/${pid}`,
-                "_count=20",
-              ]),
-              FhirClientInstance.search(req, "Flag", [
-                `subject=Patient/${pid}`,
-                "_count=20",
-              ]),
-            ]);
-            if (!patient) continue;
+        // Fetch all patients in parallel so dashboard render time stays
+        // near-constant regardless of cohort size.
+        const perPatientResults = await Promise.all(
+          cohort.map(async (pid): Promise<PanelEntry | null> => {
+            try {
+              const [patient, obs, tasks, flags, conditions] = await Promise.all([
+                FhirClientInstance.read<fhirR4.Patient>(req, `Patient/${pid}`),
+                FhirClientInstance.search(req, "Observation", [
+                  `patient=${pid}`,
+                  "_count=100",
+                  "_sort=-date",
+                ]),
+                FhirClientInstance.search(req, "Task", [
+                  `subject=Patient/${pid}`,
+                  "_count=20",
+                ]),
+                FhirClientInstance.search(req, "Flag", [
+                  `subject=Patient/${pid}`,
+                  "_count=20",
+                ]),
+                FhirClientInstance.search(req, "Condition", [
+                  `patient=${pid}`,
+                  "_count=50",
+                ]),
+              ]);
+              if (!patient) return null;
 
-            const bp: VitalReading[] = [];
-            const labs: LabReading[] = [];
-            for (const e of obs?.entry ?? []) {
-              const o = e.resource as fhirR4.Observation;
-              const code = o.code?.coding?.[0]?.code ?? "";
-              const date = o.effectiveDateTime ?? o.issued ?? "";
-              if (code === "85354-9" && o.component?.length) {
-                const sys = o.component.find(
-                  (c) => c.code?.coding?.[0]?.code === "8480-6",
-                )?.valueQuantity?.value;
-                const dia = o.component.find(
-                  (c) => c.code?.coding?.[0]?.code === "8462-4",
-                )?.valueQuantity?.value;
-                bp.push({
-                  date,
-                  systolicMmHg: typeof sys === "number" ? sys : null,
-                  diastolicMmHg: typeof dia === "number" ? dia : null,
-                });
-              } else if (typeof o.valueQuantity?.value === "number") {
-                labs.push({
-                  code,
-                  display: o.code?.coding?.[0]?.display ?? "",
-                  value: o.valueQuantity.value,
-                  unit: o.valueQuantity.unit,
-                  date,
-                });
+              const bp: VitalReading[] = [];
+              const labs: LabReading[] = [];
+              for (const e of obs?.entry ?? []) {
+                const o = e.resource as fhirR4.Observation;
+                const code = o.code?.coding?.[0]?.code ?? "";
+                const date = o.effectiveDateTime ?? o.issued ?? "";
+                if (code === "85354-9" && o.component?.length) {
+                  const sys = o.component.find(
+                    (c) => c.code?.coding?.[0]?.code === "8480-6",
+                  )?.valueQuantity?.value;
+                  const dia = o.component.find(
+                    (c) => c.code?.coding?.[0]?.code === "8462-4",
+                  )?.valueQuantity?.value;
+                  bp.push({
+                    date,
+                    systolicMmHg: typeof sys === "number" ? sys : null,
+                    diastolicMmHg: typeof dia === "number" ? dia : null,
+                  });
+                } else if (typeof o.valueQuantity?.value === "number") {
+                  labs.push({
+                    code,
+                    display: o.code?.coding?.[0]?.display ?? "",
+                    value: o.valueQuantity.value,
+                    unit: o.valueQuantity.unit,
+                    date,
+                  });
+                }
               }
+
+              // Resolve gestational age from the pregnancy Condition (Z34.*)
+              // onsetDateTime, so the classifier's gestational-age weighting
+              // at >=32w actually fires (previously we passed null and lost
+              // the +10 uplift on severe scores).
+              const gestationalAgeWeeks = _gestationalAgeFromConditions(
+                conditions ?? undefined,
+              );
+
+              const urgency = classifyUrgency({
+                gestationalAgeWeeks,
+                bpReadings: bp,
+                labReadings: labs,
+              });
+
+              const mgTasks = (tasks?.entry ?? [])
+                .map((e) => e.resource as fhirR4.Task)
+                .filter(isMaternalGuardTask);
+              const mgFlags = (flags?.entry ?? [])
+                .map((e) => e.resource as fhirR4.Flag)
+                .filter(isMaternalGuardFlag);
+
+              const family = patient.name?.[0]?.family ?? "";
+              const given = (patient.name?.[0]?.given ?? []).join(" ");
+              const display = `${family}${given ? ", " + given : ""}` || pid;
+
+              return { id: pid, display, urgency, tasks: mgTasks, flags: mgFlags };
+            } catch (err) {
+              // Surface the error to the server log so an expired FHIR
+              // token or a 4xx on one patient does not vanish silently.
+              console.error(
+                `[OpenMaternalDashboard] error scanning patient ${pid}:`,
+                err instanceof Error ? err.message : err,
+              );
+              return null;
             }
+          }),
+        );
 
-            const urgency = classifyUrgency({
-              gestationalAgeWeeks: null,
-              bpReadings: bp,
-              labReadings: labs,
-            });
-
-            const mgTasks = (tasks?.entry ?? [])
-              .map((e) => e.resource as fhirR4.Task)
-              .filter(isMaternalGuardTask);
-            const mgFlags = (flags?.entry ?? [])
-              .map((e) => e.resource as fhirR4.Flag)
-              .filter(isMaternalGuardFlag);
-
-            const family = patient.name?.[0]?.family ?? "";
-            const given = (patient.name?.[0]?.given ?? []).join(" ");
-            const display = `${family}${given ? ", " + given : ""}` || pid;
-
-            panel.push({
-              id: pid,
-              display,
-              urgency,
-              tasks: mgTasks,
-              flags: mgFlags,
-            });
-          } catch {
-            // skip patient on error
-          }
-        }
+        const panel: PanelEntry[] = perPatientResults.filter(
+          (r): r is PanelEntry => r !== null,
+        );
 
         panel.sort((a, b) => b.urgency.score - a.urgency.score);
         const red = panel.filter((p) => p.urgency.band === "RED").length;
@@ -291,7 +347,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
                   label("Due (hours from now)"),
                   input({
                     name: `${prefix}_due_hours`,
-                    value: "24",
+                    value: _dueHoursFromTask(task),
                     inputType: "number",
                   }),
                 ]),
