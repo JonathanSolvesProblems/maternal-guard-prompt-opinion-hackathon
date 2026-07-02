@@ -206,7 +206,7 @@ export function prefabApp(opts: PrefabAppOpts): Record<string, unknown> {
   // We omit `title` and `defs` because LoopGuard omits them too; the
   // envelope keys are exactly [$prefab, view, state].
   return clean({
-    $prefab: { version: "0.2" },
+    $prefab: { version: "0.3" },
     view,
     state: opts.state ?? {},
   });

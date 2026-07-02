@@ -7,17 +7,71 @@ import express from "express";
 import cors from "cors";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 
-// The prefab-ui renderer as a self-contained singlefile HTML (Vite bundle
-// with the entire React app + AppBridge inlined; no external script/style
-// references). This matches what FastMCP's Python provider serves at
-// ui://prefab/renderer.html. Because everything is inlined, the iframe's
-// CSP does NOT need to whitelist a CDN — script-src 'self' is enough.
-// Read once at boot from disk; keep in memory for the lifetime of the
-// process (~6.5MB).
-const PREFAB_RENDERER_HTML = fs.readFileSync(
+// The prefab-ui renderer HTML we serve at ui://prefab/renderer.html. We
+// keep BOTH shapes on hand and pick one at boot via env var, so we can
+// A/B without re-downloading:
+//
+//   MATERNALGUARD_PREFAB_RENDERER_MODE=singlefile  (default, current)
+//     Vite singlefile: entire React app + AppBridge as one giant inline
+//     <script type="module">. Origin-agnostic, no CDN dependency, but
+//     blocked by Prompt Opinion's parent-page CSP because their
+//     script-src directive is origin-based and does not allow inline.
+//
+//   MATERNALGUARD_PREFAB_RENDERER_MODE=cdn
+//     Stub HTML that references <script src="https://cdn.jsdelivr.net/
+//     npm/@prefecthq/prefab-ui@0.20.2/dist/app/renderer.js">. Only works
+//     if Prompt Opinion extends the iframe CSP to allow jsDelivr — which
+//     it should when the resource carries _meta.ui.csp.resourceDomains
+//     naming that origin (FastMCP wire vocabulary).
+//
+// Both are cached in module scope so first-request latency is amortised.
+const PREFAB_SINGLEFILE_HTML = fs.readFileSync(
   path.join(__dirname, "static", "prefab-renderer.html"),
   "utf8",
+);
+
+const PREFAB_CDN_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prefab</title>
+    <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@prefecthq/prefab-ui@0.20.2/dist/app/renderer.js"></script>
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/@prefecthq/prefab-ui@0.20.2/dist/app/renderer.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`;
+
+const PREFAB_RENDERER_MODE =
+  process.env["MATERNALGUARD_PREFAB_RENDERER_MODE"] === "cdn" ? "cdn" : "singlefile";
+
+const PREFAB_RENDERER_HTML =
+  PREFAB_RENDERER_MODE === "cdn" ? PREFAB_CDN_HTML : PREFAB_SINGLEFILE_HTML;
+
+// Compute the sha256 of the ONE inline <script>...</script> body inside
+// the singlefile HTML. CSP hashes cover the exact bytes between the tags,
+// UTF-8, no whitespace normalisation. We ship this hash on _meta.ui.csp
+// in every plausible field name (FastMCP's shape uses domain lists only,
+// so the hash keys are speculative; Prompt Opinion ignores unknown keys).
+const INLINE_SCRIPT_HASHES: string[] = (() => {
+  const re = /<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(PREFAB_SINGLEFILE_HTML)) !== null) {
+    const body = m[1];
+    if (!body || body.trim() === "") continue;
+    out.push("sha256-" + crypto.createHash("sha256").update(body, "utf8").digest("base64"));
+  }
+  return out;
+})();
+
+console.log(
+  `[MaternalGuard] Prefab renderer mode=${PREFAB_RENDERER_MODE}; inline-script hashes:`,
+  INLINE_SCRIPT_HASHES.map((h) => h.slice(0, 24) + "..."),
 );
 
 const app = express();
@@ -30,7 +84,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.7.0-singlefile-renderer",
+    version: "1.8.0-csp-hashes-and-domains",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
@@ -121,16 +175,48 @@ app.post("/mcp", async (req, res) => {
       tool.registerTool(server, req);
     }
 
-    // Renderer resource: served at ui://prefab/renderer.html, the URI that
-    // OpenMaternalDashboard's _meta.ui.resourceUri points to. The platform
-    // fetches this via resources/read and mounts it inside a sandboxed
-    // iframe in the chat. Because the HTML has everything inlined (React,
-    // renderer, styles, AppBridge), the iframe does NOT need any external
-    // origins allowed in its CSP. We therefore omit resourceDomains, which
-    // matches FastMCP's default when the renderer is fully self-contained.
-    // mimeType MUST be "text/html;profile=mcp-app" (the profile param is
-    // Prompt Opinion's discovery signal for app-renderer resources; plain
-    // "text/html" is not recognized).
+    // Renderer resource, mounted at ui://prefab/renderer.html — the URI
+    // OpenMaternalDashboard's _meta.ui.resourceUri points to. Prompt
+    // Opinion fetches this via resources/read and mounts it in an iframe
+    // whose src is srcdoc="", so the iframe inherits the parent chat
+    // page's CSP. That CSP is origin-based and rejects inline scripts, so
+    // the resource _meta needs to tell Prompt Opinion which external
+    // origins to add to script-src (via resourceDomains) AND which inline
+    // script hashes to permit (via scriptHashes and its several observed
+    // spellings). We publish the union of every plausible spelling so the
+    // platform picks whichever it reads and ignores the rest.
+    const cspMeta = {
+      ui: {
+        csp: {
+          // FastMCP-native camelCase wire vocabulary (domain lists only).
+          connectDomains: [
+            "https://cdn.jsdelivr.net",
+            "https://raw.githubusercontent.com",
+          ],
+          resourceDomains: [
+            "https://cdn.jsdelivr.net",
+            "https://raw.githubusercontent.com",
+          ],
+          frameDomains: [],
+          baseUriDomains: [],
+          // snake_case mirror in case a host reads Python-side naming.
+          connect_domains: ["https://cdn.jsdelivr.net"],
+          resource_domains: ["https://cdn.jsdelivr.net"],
+          // Literal CSP directive keys, in case the host parses them as-is.
+          "script-src": ["'self'", "https://cdn.jsdelivr.net", ...INLINE_SCRIPT_HASHES.map((h) => `'${h}'`)],
+          "style-src": ["'self'", "https://cdn.jsdelivr.net", "'unsafe-inline'"],
+          "img-src": ["'self'", "https://cdn.jsdelivr.net", "data:", "blob:"],
+          "font-src": ["'self'", "https://cdn.jsdelivr.net", "data:"],
+          "connect-src": ["'self'", "https://cdn.jsdelivr.net"],
+          // Multiple observed spellings for hash-based script allowlisting.
+          scriptHashes: INLINE_SCRIPT_HASHES,
+          script_hashes: INLINE_SCRIPT_HASHES,
+          inlineScriptHashes: INLINE_SCRIPT_HASHES,
+          inline_script_hashes: INLINE_SCRIPT_HASHES,
+        },
+      },
+    };
+
     server.registerResource(
       "prefab-renderer",
       "ui://prefab/renderer.html",
@@ -138,13 +224,16 @@ app.post("/mcp", async (req, res) => {
         title: "Prefab UI Renderer",
         description: "Prefab UI renderer iframe target for MCP App tools",
         mimeType: "text/html;profile=mcp-app",
+        _meta: cspMeta,
       },
       async (uri) => ({
+        _meta: cspMeta,
         contents: [
           {
             uri: uri.href,
             mimeType: "text/html;profile=mcp-app",
             text: PREFAB_RENDERER_HTML,
+            _meta: cspMeta,
           },
         ],
       }),
