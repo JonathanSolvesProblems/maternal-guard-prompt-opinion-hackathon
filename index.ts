@@ -5,6 +5,20 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { IMcpTool } from "./src/IMcpTool";
 import express from "express";
 import cors from "cors";
+import fs from "node:fs";
+import path from "node:path";
+
+// The prefab-ui renderer as a self-contained singlefile HTML (Vite bundle
+// with the entire React app + AppBridge inlined; no external script/style
+// references). This matches what FastMCP's Python provider serves at
+// ui://prefab/renderer.html. Because everything is inlined, the iframe's
+// CSP does NOT need to whitelist a CDN — script-src 'self' is enough.
+// Read once at boot from disk; keep in memory for the lifetime of the
+// process (~6.5MB).
+const PREFAB_RENDERER_HTML = fs.readFileSync(
+  path.join(__dirname, "static", "prefab-renderer.html"),
+  "utf8",
+);
 
 const app = express();
 const port = process.env["PORT"] || 5000;
@@ -16,7 +30,7 @@ app.get("/health", async (_, res) => {
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.6.0-render-fixes",
+    version: "1.7.0-singlefile-renderer",
     tools: [
       "AssessMaternalRisk",
       "ScreenSocialDeterminants",
@@ -107,33 +121,16 @@ app.post("/mcp", async (req, res) => {
       tool.registerTool(server, req);
     }
 
-    // Register the prefab renderer resource that tools/_meta/ui/resourceUri
-    // points to. The platform fetches this resource via resources/read and
-    // mounts the returned HTML inside an iframe in the chat. The HTML is a
-    // tiny stub that loads the prefab renderer JS/CSS from jsDelivr; the
-    // bundled renderer then receives our PrefabApp JSON via the platform's
-    // postMessage bridge and draws the actual UI.
-    const PREFAB_RENDERER_HTML = `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prefab</title>
-  <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/@prefecthq/prefab-ui@0.19.1/dist/app/renderer.css">
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@prefecthq/prefab-ui@0.19.1/dist/app/renderer.js"></script>
-</body>
-</html>`;
-
-    // Renderer resource. Two things learned from LoopGuard's live wire:
-    //   1. mimeType MUST be "text/html;profile=mcp-app" (the profile param is
-    //      how Prompt Opinion discovers app-renderer resources; plain
-    //      "text/html" is not recognized).
-    //   2. Resource _meta.ui.csp.resourceDomains lists which external origins
-    //      the sandboxed iframe is allowed to load from. Without it, the
-    //      iframe CSP blocks the jsDelivr CDN scripts our stub loads.
+    // Renderer resource: served at ui://prefab/renderer.html, the URI that
+    // OpenMaternalDashboard's _meta.ui.resourceUri points to. The platform
+    // fetches this via resources/read and mounts it inside a sandboxed
+    // iframe in the chat. Because the HTML has everything inlined (React,
+    // renderer, styles, AppBridge), the iframe does NOT need any external
+    // origins allowed in its CSP. We therefore omit resourceDomains, which
+    // matches FastMCP's default when the renderer is fully self-contained.
+    // mimeType MUST be "text/html;profile=mcp-app" (the profile param is
+    // Prompt Opinion's discovery signal for app-renderer resources; plain
+    // "text/html" is not recognized).
     server.registerResource(
       "prefab-renderer",
       "ui://prefab/renderer.html",
@@ -141,26 +138,12 @@ app.post("/mcp", async (req, res) => {
         title: "Prefab UI Renderer",
         description: "Prefab UI renderer iframe target for MCP App tools",
         mimeType: "text/html;profile=mcp-app",
-        _meta: {
-          ui: {
-            csp: {
-              resourceDomains: ["https://cdn.jsdelivr.net"],
-            },
-          },
-        },
       },
       async (uri) => ({
         contents: [
           {
             uri: uri.href,
             mimeType: "text/html;profile=mcp-app",
-            _meta: {
-              ui: {
-                csp: {
-                  resourceDomains: ["https://cdn.jsdelivr.net"],
-                },
-              },
-            },
             text: PREFAB_RENDERER_HTML,
           },
         ],
