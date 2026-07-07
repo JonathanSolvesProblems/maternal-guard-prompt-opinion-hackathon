@@ -9,6 +9,13 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
+// Single source of truth for the server version so /health and the MCP
+// handshake never drift out of sync.
+const pkg = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "package.json"), "utf8"),
+) as { version: string };
+const SERVER_VERSION = pkg.version;
+
 // The prefab-ui renderer HTML we serve at ui://prefab/renderer.html. We
 // keep BOTH shapes on hand and pick one at boot via env var, so we can
 // A/B without re-downloading:
@@ -81,24 +88,21 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/health", async (_, res) => {
+  // Tool list is derived from the tools barrel at request time, so it
+  // stays in sync as tools are added or removed. MaternalPanelScan is
+  // env-gated and only surfaces when MATERNALGUARD_ENABLE_PANEL_SCAN=true.
+  const toolNames = Object.keys(tools).filter((name) => {
+    if (name === "MaternalPanelScanToolInstance") {
+      return process.env["MATERNALGUARD_ENABLE_PANEL_SCAN"] === "true";
+    }
+    return true;
+  }).map((k) => k.replace(/ToolInstance$/, ""));
   res.json({
     status: "healthy",
     name: "MaternalGuard MCP Server",
-    version: "1.8.0-csp-hashes-and-domains",
-    tools: [
-      "AssessMaternalRisk",
-      "ScreenSocialDeterminants",
-      "GenerateCarePlan",
-      "InterpretLabTrends",
-      "PredictNeonatalImpact",
-      ...(process.env["MATERNALGUARD_ENABLE_PANEL_SCAN"] === "true"
-        ? ["MaternalPanelScan"]
-        : []),
-      "ProposeMaternalAction",
-      "ListMaternalActions",
-      "UpdateMaternalAction",
-      "OpenMaternalDashboard",
-    ],
+    version: SERVER_VERSION,
+    prefabRendererMode: PREFAB_RENDERER_MODE,
+    tools: toolNames,
   });
 });
 
@@ -120,9 +124,12 @@ app.post("/mcp", async (req, res) => {
   try {
     const method = req.body?.method || "unknown";
     const fhirUrl = req.headers["x-fhir-server-url"];
-    const patientId = req.headers["x-patient-id"];
+    // Log presence of patient-id, not the value — the raw SHARP identifier
+    // is PHI-equivalent and must never hit stdout (see no-PHI-in-logs
+    // guarantee in README).
+    const hasPatientIdHeader = !!req.headers["x-patient-id"];
     console.log(
-      `[MCP] method=${method} | x-patient-id=${patientId || "MISSING"} | x-fhir-server-url=${fhirUrl || "MISSING"}`,
+      `[MCP] method=${method} | x-patient-id=${hasPatientIdHeader ? "PRESENT" : "MISSING"} | x-fhir-server-url=${fhirUrl || "MISSING"}`,
     );
     const rawToken = req.headers["x-fhir-access-token"];
     const hasToken = !!rawToken;
@@ -147,7 +154,7 @@ app.post("/mcp", async (req, res) => {
     const server = new McpServer(
       {
         name: "MaternalGuard",
-        version: "1.0.0",
+        version: SERVER_VERSION,
       },
       {
         instructions: [
@@ -252,7 +259,12 @@ app.post("/mcp", async (req, res) => {
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
-    console.log("Error handling MCP request:", error);
+    // Log only the message. The raw Error object can include the axios
+    // request config (bearer token) or an Express body reference; use the
+    // same redaction the other error paths already use.
+    console.error(
+      `[MCP] error handling request: ${error instanceof Error ? error.message : String(error)}`,
+    );
     if (!res.headersSent) {
       res.status(500).json({
         jsonrpc: "2.0",

@@ -198,13 +198,20 @@ export function prefabApp(opts: PrefabAppOpts): Record<string, unknown> {
     ? { type: "Column", children: opts.view }
     : opts.view;
 
-  // Wire shape learned from LoopGuard's live capture:
-  //   { "$prefab": { "version": "0.2" }, "view": {...}, "state": {...} }
-  // The `$prefab` field is an object with a `version` key (the renderer JS
-  // validates `payload.$prefab.version`). Earlier we emitted a bare string,
-  // which failed that validation and caused silent blank iframes.
-  // We omit `title` and `defs` because LoopGuard omits them too; the
-  // envelope keys are exactly [$prefab, view, state].
+  // Wire shape:
+  //   { "$prefab": { "version": "0.3" }, "view": {...}, "state": {...} }
+  //
+  // The bundled prefab-ui renderer (v0.20.2 in static/prefab-renderer.html)
+  // maintains a hard-coded protocol allowlist:
+  //   const R3e = new Set(["0.3"]);
+  //   if (g && !R3e.has(g)) console.warn(`[Prefab] Unrecognized protocol
+  //     version "${g}" (supported: ${[...R3e].join(", ")})`);
+  // The check only warns, but any drift will fire at runtime and any
+  // future strict-mode bump on the renderer will silently blank the
+  // iframe. Keep this in lockstep with static/prefab-renderer.html.
+  //
+  // We omit `title` and `defs` (never observed on a working LoopGuard
+  // wire); the envelope keys are exactly [$prefab, view, state].
   return clean({
     $prefab: { version: "0.3" },
     view,

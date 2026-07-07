@@ -1,6 +1,6 @@
 {
   "name": "maternalguard-mcp",
-  "version": "1.0.0",
+  "version": "1.9.0",
   "description": "MaternalGuard - AI-Powered Maternal Risk Intelligence MCP Server for Prompt Opinion",
   "main": "index.ts",
   "scripts": {

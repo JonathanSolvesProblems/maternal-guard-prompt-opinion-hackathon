@@ -154,6 +154,34 @@ class UpdateMaternalActionTool implements IMcpTool {
               );
             }
 
+            // Reject illegal transitions: draft actions only apply to a
+            // Task that is still in `requested`. edit-coordination is
+            // allowed on `requested` or `accepted` (owner/due may need
+            // adjustment after approval), but never on rejected/cancelled/
+            // completed since those are terminal. This prevents a
+            // "reject" click from silently reversing a prior approval.
+            const currentTaskStatus = existing.status ?? "unknown";
+            const isTerminal = (s: string) =>
+              ["rejected", "cancelled", "failed", "completed", "entered-in-error"].includes(s);
+            if (input.action === "approve" && currentTaskStatus !== "requested") {
+              return McpUtilities.createTextResponse(
+                `Cannot approve Task ${input.taskId}: current status is "${currentTaskStatus}" (expected "requested"). Draft-only actions cannot mutate a Task that has already been resolved.`,
+                { isError: true },
+              );
+            }
+            if (input.action === "reject" && currentTaskStatus !== "requested") {
+              return McpUtilities.createTextResponse(
+                `Cannot reject Task ${input.taskId}: current status is "${currentTaskStatus}" (expected "requested"). Rejection only applies to a draft that has not yet been approved.`,
+                { isError: true },
+              );
+            }
+            if (input.action === "edit-coordination" && isTerminal(currentTaskStatus)) {
+              return McpUtilities.createTextResponse(
+                `Cannot edit Task ${input.taskId}: current status is "${currentTaskStatus}" (terminal). Coordination edits only apply to open draft or accepted tasks.`,
+                { isError: true },
+              );
+            }
+
             const updated: fhirR4.Task = JSON.parse(JSON.stringify(existing));
             const newNote = {
               text:
@@ -255,6 +283,18 @@ class UpdateMaternalActionTool implements IMcpTool {
             if (!existing) {
               return McpUtilities.createTextResponse(
                 `Flag ${input.flagId} not found.`,
+                { isError: true },
+              );
+            }
+
+            // Only draft (`inactive`) flags can be activated or dismissed.
+            // A flag already in `active` or `entered-in-error` is a
+            // completed clinician decision; further dismiss/activate
+            // clicks must not silently override it.
+            const currentFlagStatus = existing.status ?? "unknown";
+            if (currentFlagStatus !== "inactive") {
+              return McpUtilities.createTextResponse(
+                `Cannot ${input.action.replace("-flag", "")} Flag ${input.flagId}: current status is "${currentFlagStatus}" (expected "inactive"). Only draft flags can be activated or dismissed.`,
                 { isError: true },
               );
             }
