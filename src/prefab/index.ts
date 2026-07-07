@@ -69,35 +69,53 @@ export function card(props: CommonProps = {}, children: PrefabNode[] = []): Pref
 export function cardHeader(props: CommonProps = {}, children: PrefabNode[] = []): PrefabNode {
   return clean({ type: "CardHeader", ...props, children });
 }
+// Text-carrying components: prefab-ui zod schema for each component defines
+// EXACTLY which prop carries the visible string. Passing bare strings inside
+// `children` blows up the renderer's tree walker with
+//   Cannot use 'in' operator to search for '$ref' in <string>
+// Extracted from static/prefab-renderer.html (v0.20.2 bundle):
+//
+//   Kf-based (require `content: string`):
+//     H1, H2, H3, H4, P, Lead, Muted, Text, AlertTitle, AlertDescription,
+//     CardTitle, CardDescription, Markdown
+//   Label-based (require `label: string`):
+//     Badge, Button
+//   Special label prop:
+//     Label uses `text`, not `label`
+//     Metric uses `label` + `value`
 export function cardTitle(text: string, props: CommonProps = {}): PrefabNode {
-  return clean({ type: "CardTitle", ...props, children: [text] });
+  return clean({ type: "CardTitle", ...props, content: text });
 }
 export function cardContent(props: CommonProps = {}, children: PrefabNode[] = []): PrefabNode {
   return clean({ type: "CardContent", ...props, children });
 }
 
 export function heading(text: string, level: 1 | 2 | 3 | 4 = 2, props: CommonProps = {}): PrefabNode {
-  // prefab exposes H1..H4 components. We default to H2.
+  // prefab exposes H1..H4 components; each extends the Kf schema which
+  // requires `content`, not children.
   const type = `H${level}` as `H${typeof level}`;
-  return clean({ type, ...props, children: [text] });
+  return clean({ type, ...props, content: text });
 }
 
 export function text(content: string, opts: CommonProps & { bold?: boolean } = {}): PrefabNode {
-  return clean({ type: "Text", ...opts, children: [content] });
+  return clean({ type: "Text", ...opts, content });
 }
 
 export function muted(content: string, props: CommonProps = {}): PrefabNode {
-  return clean({ type: "Muted", ...props, children: [content] });
+  return clean({ type: "Muted", ...props, content });
 }
 
 export function label(content: string, props: CommonProps = {}): PrefabNode {
-  return clean({ type: "Label", ...props, children: [content] });
+  // Label extends xi but its schema keys its display string under `text`,
+  // not `content`. See renderer schema:
+  //   xi.extend({type:Lt("Label"),text:tt().optional(),forId:tt().optional()})
+  return clean({ type: "Label", ...props, text: content });
 }
 
 export type BadgeVariant = "default" | "secondary" | "destructive" | "warning" | "success" | "outline";
 
 export function badge(content: string, variant: BadgeVariant = "default", props: CommonProps = {}): PrefabNode {
-  return clean({ type: "Badge", variant, ...props, children: [content] });
+  return clean({ type: "Badge", variant, ...props, label: content });
 }
 
 interface MetricProps extends CommonProps {
@@ -135,7 +153,8 @@ interface ButtonProps extends CommonProps {
   onClick?: PrefabAction | PrefabAction[];
 }
 export function button(content: string, props: ButtonProps = {}): PrefabNode {
-  return clean({ type: "Button", ...props, children: [content] });
+  // Button extends hi and requires `label: string`; no children slot.
+  return clean({ type: "Button", ...props, label: content });
 }
 
 interface AlertProps extends CommonProps {
@@ -145,10 +164,12 @@ export function alert(props: AlertProps, children: PrefabNode[] = []): PrefabNod
   return clean({ type: "Alert", ...props, children });
 }
 export function alertTitle(content: string, props: CommonProps = {}): PrefabNode {
-  return clean({ type: "AlertTitle", ...props, children: [content] });
+  // AlertTitle / AlertDescription both extend hi with a required `content`
+  // prop; no children slot.
+  return clean({ type: "AlertTitle", ...props, content });
 }
 export function alertDescription(content: string, props: CommonProps = {}): PrefabNode {
-  return clean({ type: "AlertDescription", ...props, children: [content] });
+  return clean({ type: "AlertDescription", ...props, content });
 }
 
 // ─── Action builders ───────────────────────────────────────────────────────
