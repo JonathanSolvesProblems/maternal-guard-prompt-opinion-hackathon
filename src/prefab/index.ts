@@ -35,28 +35,68 @@ function clean(obj: Record<string, unknown>): Record<string, unknown> {
 
 interface CommonProps {
   cssClass?: string;
-  id?: string;
+  // NOTE: `id` is intentionally omitted here. The prefab-ui base schema
+  // (`hi = Xn({cssClass, onMount})`) does not expose `id`, and Xn is
+  // default-strip z.object so any `id` field is silently dropped by the
+  // renderer. Keeping it out of the TypeScript type prevents callers from
+  // assuming stable DOM ids they will never actually get.
 }
 
-interface LayoutProps extends CommonProps {
+// Column / Row / Grid schemas from the bundled renderer do NOT accept
+// gap / align / justify props (Xn strips unknown keys). Layout tokens must
+// be applied via cssClass utility strings. We keep the ergonomic tokens on
+// the TS interface for readability, then translate them into Tailwind
+// utility classes inside the builder — so tool code doesn't have to hand-
+// write repetitive cssClass strings.
+interface LayoutTokens {
   gap?: number;
   align?: "start" | "center" | "end" | "stretch";
   justify?: "start" | "center" | "end" | "between" | "around" | "evenly";
 }
+interface LayoutProps extends CommonProps, LayoutTokens {}
+
+function layoutCssClass(base: string | undefined, t: LayoutTokens): string | undefined {
+  const parts: string[] = [];
+  if (base) parts.push(base);
+  if (typeof t.gap === "number") parts.push(`gap-${t.gap}`);
+  if (t.align) parts.push(`items-${t.align}`);
+  if (t.justify) parts.push(`justify-${t.justify}`);
+  return parts.length ? parts.join(" ") : undefined;
+}
 
 export function column(props: LayoutProps = {}, children: PrefabNode[] = []): PrefabNode {
-  return clean({ type: "Column", ...props, children });
+  const { cssClass, gap, align, justify } = props;
+  return clean({
+    type: "Column",
+    cssClass: layoutCssClass(cssClass, { gap, align, justify }),
+    children,
+  });
 }
 
 export function row(props: LayoutProps = {}, children: PrefabNode[] = []): PrefabNode {
-  return clean({ type: "Row", ...props, children });
+  const { cssClass, gap, align, justify } = props;
+  return clean({
+    type: "Row",
+    cssClass: layoutCssClass(cssClass, { gap, align, justify }),
+    children,
+  });
 }
 
 export function grid(
-  props: CommonProps & { minColumnWidth?: string; gap?: number } = {},
+  props: CommonProps & { minColumnWidth?: string; columnTemplate?: string; gap?: number } = {},
   children: PrefabNode[] = [],
 ): PrefabNode {
-  return clean({ type: "Grid", ...props, children });
+  // Grid schema only exposes `minColumnWidth` and `columnTemplate`; `gap`
+  // is not a schema field. Push it into cssClass instead.
+  const { cssClass, minColumnWidth, columnTemplate, gap } = props;
+  const merged = layoutCssClass(cssClass, { gap });
+  return clean({
+    type: "Grid",
+    cssClass: merged,
+    minColumnWidth,
+    columnTemplate,
+    children,
+  });
 }
 
 export function separator(props: CommonProps = {}): PrefabNode {
@@ -119,33 +159,39 @@ export function badge(content: string, variant: BadgeVariant = "default", props:
 }
 
 interface MetricProps extends CommonProps {
-  label?: string;
-  value?: string;
-  variant?: BadgeVariant;
+  // Metric schema requires both label and value (see g3n=hi.extend({..,label:tt(),value:Ur([tt(),zn()])})).
+  label: string;
+  value: string | number;
+  description?: string;
+  delta?: string | number;
+  trend?: "up" | "down" | "neutral";
+  trendSentiment?: "positive" | "negative" | "neutral";
 }
 export function metric(props: MetricProps): PrefabNode {
   return clean({ type: "Metric", ...props });
 }
 
 interface InputProps extends CommonProps {
-  name: string;
+  name?: string;
   value?: string;
   placeholder?: string;
   maxLength?: number;
-  inputType?: "text" | "number" | "date";
+  // Field is literally `inputType` in the bundled schema (h3n=hi.extend({..,inputType:$r([...])})).
+  // Previous builder renamed it to `type_`, which the schema silently
+  // stripped, so number/date inputs quietly rendered as text.
+  inputType?: "text" | "email" | "password" | "number" | "tel" | "url" | "search" | "date" | "time" | "datetime-local" | "file";
 }
 export function input(props: InputProps): PrefabNode {
-  // The HTML `type` attribute is exposed as `inputType` on our wrapper to avoid
-  // colliding with the component discriminator field (`type: "Input"`).
-  const { inputType, ...rest } = props;
-  return clean({
-    type: "Input",
-    ...rest,
-    ...(inputType ? { type_: inputType } : {}),
-  });
+  return clean({ type: "Input", ...props });
 }
 
-export type ButtonVariant = "default" | "secondary" | "destructive" | "outline" | "ghost" | "link" | "primary";
+// Button schema variant enum (bundled renderer):
+//   $r(["default","destructive","outline","secondary","ghost","link",
+//       "success","warning","info"]).or(tt())
+// NOTE: there is no "primary" — early builds emitted "primary" which fell
+// through the .or(string) fallback and styled as default. Callers should
+// use "default" for the visually-emphasised action.
+export type ButtonVariant = "default" | "secondary" | "destructive" | "outline" | "ghost" | "link" | "success" | "warning" | "info";
 
 interface ButtonProps extends CommonProps {
   variant?: ButtonVariant;
@@ -177,25 +223,39 @@ export function alertDescription(content: string, props: CommonProps = {}): Pref
 interface CallToolOpts {
   tool: string;
   arguments?: Record<string, unknown>;
-  unwrapResult?: boolean;
   onSuccess?: PrefabAction | PrefabAction[];
   onError?: PrefabAction | PrefabAction[];
 }
 export function callTool(opts: CallToolOpts): PrefabAction {
+  // toolCall schema from the bundled renderer:
+  //   YNe = Xn({ action:Lt("toolCall"), tool:tt(), arguments:record.optional(),
+  //              onSuccess: union([Rg,array(Rg)]).optional(),
+  //              onError:  union([Rg,array(Rg)]).optional() })
+  // `unwrapResult` is not in the schema; it was silently stripped by Xn's
+  // default z.object strip mode, so the earlier builder's `unwrapResult`
+  // key never made it to the renderer runtime. Result unwrapping is now
+  // caller responsibility on the server side.
   return clean({
     action: "toolCall",
     tool: opts.tool,
     arguments: opts.arguments ?? {},
-    unwrapResult: opts.unwrapResult,
     onSuccess: opts.onSuccess,
     onError: opts.onError,
   });
 }
 
 interface ShowToastOpts {
-  title?: string;
+  // showToast schema from the bundled renderer:
+  //   rRe = Xn({ action:Lt("showToast"), message:tt(), description:tt().optional(),
+  //              variant:enum("default","success","error","warning","info").optional(),
+  //              duration:zn().optional() })
+  // The visible string is `message`, NOT `title`. Sending `title` produced
+  //   [Prefab] Action validation error: Invalid "showToast" action Object
+  // which silently disabled every button's onSuccess/onError toast.
+  message: string;
   description?: string;
-  variant?: "default" | "destructive" | "success" | "warning";
+  variant?: "default" | "success" | "error" | "warning" | "info";
+  duration?: number;
 }
 export function showToast(opts: ShowToastOpts): PrefabAction {
   return clean({

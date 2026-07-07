@@ -359,7 +359,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
 
               const buttonsRow = row({ gap: 2 }, [
                 button("Approve", {
-                  variant: "primary",
+                  variant: "default",
                   onClick: callTool({
                     tool: "UpdateMaternalAction",
                     arguments: {
@@ -369,14 +369,14 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     },
                     onSuccess: [
                       showToast({
-                        title: "Approved",
+                        message: "Approved",
                         description: "Task moved to accepted.",
                       }),
                     ],
                     onError: showToast({
-                      title: "Approve failed",
+                      message: "Approve failed",
                       description: "See server logs.",
-                      variant: "destructive",
+                      variant: "error",
                     }),
                   }),
                 }),
@@ -391,14 +391,14 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     },
                     onSuccess: [
                       showToast({
-                        title: "Rejected",
+                        message: "Rejected",
                         description: "Task closed with reason.",
                       }),
                     ],
                     onError: showToast({
-                      title: "Reject failed",
+                      message: "Reject failed",
                       description: "See server logs.",
-                      variant: "destructive",
+                      variant: "error",
                     }),
                   }),
                 }),
@@ -415,14 +415,14 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     },
                     onSuccess: [
                       showToast({
-                        title: "Saved",
+                        message: "Saved",
                         description: "Coordination metadata updated.",
                       }),
                     ],
                     onError: showToast({
-                      title: "Save failed",
+                      message: "Save failed",
                       description: "See server logs.",
-                      variant: "destructive",
+                      variant: "error",
                     }),
                   }),
                 }),
@@ -461,20 +461,20 @@ class OpenMaternalDashboardTool implements IMcpTool {
                 fst === "inactive"
                   ? row({ gap: 2 }, [
                       button("Activate", {
-                        variant: "primary",
+                        variant: "default",
                         onClick: callTool({
                           tool: "UpdateMaternalAction",
                           arguments: { action: "activate-flag", flagId: fid },
                           onSuccess: [
                             showToast({
-                              title: "Activated",
+                              message: "Activated",
                               description: "Flag is now visible.",
                             }),
                           ],
                           onError: showToast({
-                            title: "Activate failed",
+                            message: "Activate failed",
                             description: "See server logs.",
-                            variant: "destructive",
+                            variant: "error",
                           }),
                         }),
                       }),
@@ -489,14 +489,14 @@ class OpenMaternalDashboardTool implements IMcpTool {
                           },
                           onSuccess: [
                             showToast({
-                              title: "Dismissed",
+                              message: "Dismissed",
                               description: "Flag closed.",
                             }),
                           ],
                           onError: showToast({
-                            title: "Dismiss failed",
+                            message: "Dismiss failed",
                             description: "See server logs.",
-                            variant: "destructive",
+                            variant: "error",
                           }),
                         }),
                       }),
