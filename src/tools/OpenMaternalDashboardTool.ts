@@ -11,6 +11,7 @@ import {
   LabReading,
   UrgencyAssessment,
 } from "../clinical/urgency-classifier";
+import { pregnancyContext } from "../clinical/pregnancy";
 import {
   prefabApp,
   prefabAppToCallToolResult,
@@ -65,32 +66,6 @@ function isMaternalGuardFlag(f: fhirR4.Flag): boolean {
   return !!f.category?.[0]?.coding?.some(
     (c) => c.system === "http://maternalguard.local/flag-categories",
   );
-}
-
-// Resolve current gestational age (weeks) from the pregnancy Condition. We
-// look for ICD-10 Z34.* ("Encounter for supervision of normal pregnancy") on
-// the Condition and use its onsetDateTime as the effective LMP (assuming a
-// term of 40 weeks). Returns null if no such Condition is found.
-function _gestationalAgeFromConditions(
-  bundle: fhirR4.Bundle | undefined,
-): number | null {
-  if (!bundle?.entry?.length) return null;
-  for (const e of bundle.entry) {
-    const c = e.resource as fhirR4.Condition | undefined;
-    const code = c?.code?.coding?.find((cc) =>
-      (cc.code ?? "").toUpperCase().startsWith("Z34"),
-    )?.code;
-    if (!code) continue;
-    const onset = c?.onsetDateTime;
-    if (!onset) continue;
-    const start = new Date(onset).getTime();
-    if (Number.isNaN(start)) continue;
-    const now = Date.now();
-    const weeks = Math.floor((now - start) / (7 * 24 * 3600 * 1000));
-    if (weeks < 0 || weeks > 45) continue;
-    return weeks;
-  }
-  return null;
 }
 
 // Compute the whole hours between now and a Task's restriction period end.
@@ -234,16 +209,21 @@ class OpenMaternalDashboardTool implements IMcpTool {
                 }
               }
 
-              // Resolve gestational age from the pregnancy Condition (Z34.*)
-              // onsetDateTime, so the classifier's gestational-age weighting
-              // at >=32w actually fires (previously we passed null and lost
-              // the +10 uplift on severe scores).
-              const gestationalAgeWeeks = _gestationalAgeFromConditions(
-                conditions ?? undefined,
-              );
+              // Guard: only score patients who are actually pregnant and
+              // female. Without this, the classifier will happily emit a
+              // RED/YELLOW/GREEN band on male or non-pregnant patients
+              // whose IDs land in the cohort — a silent safety issue that
+              // undermines the "clinician trust" thesis.
+              const preg = pregnancyContext(patient, conditions ?? undefined);
+              if (!preg.applicable) {
+                console.log(
+                  `[OpenMaternalDashboard] skipping patient ${pid}: ${preg.reason}`,
+                );
+                return null;
+              }
 
               const urgency = classifyUrgency({
-                gestationalAgeWeeks,
+                gestationalAgeWeeks: preg.gestationalAgeWeeks,
                 bpReadings: bp,
                 labReadings: labs,
               });
