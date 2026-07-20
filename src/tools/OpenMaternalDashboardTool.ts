@@ -228,12 +228,21 @@ class OpenMaternalDashboardTool implements IMcpTool {
                 labReadings: labs,
               });
 
+              // The morning-huddle dashboard is a "what needs your
+              // attention" view, not a chart audit trail. Only surface
+              // MaternalGuard drafts that are still pending clinician
+              // review — Tasks in `requested` and Flags in `inactive`.
+              // Already-approved (accepted), rejected, cancelled, or
+              // clinician-activated / dismissed items belong in the
+              // patient's chart history, not on the huddle card.
               const mgTasks = (tasks?.entry ?? [])
                 .map((e) => e.resource as fhirR4.Task)
-                .filter(isMaternalGuardTask);
+                .filter(isMaternalGuardTask)
+                .filter((t) => t.status === "requested");
               const mgFlags = (flags?.entry ?? [])
                 .map((e) => e.resource as fhirR4.Flag)
-                .filter(isMaternalGuardFlag);
+                .filter(isMaternalGuardFlag)
+                .filter((f) => f.status === "inactive");
 
               const family = patient.name?.[0]?.family ?? "";
               const given = (patient.name?.[0]?.given ?? []).join(" ");
