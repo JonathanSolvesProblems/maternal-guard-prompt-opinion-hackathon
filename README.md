@@ -6,9 +6,13 @@
 
 An **independent MCP server alongside the EHR**. SMART on FHIR + MCP + governed write-back. Built for the [Agents Assemble hackathon](https://agents-assemble.devpost.com/) on the [Prompt Opinion](https://app.promptopinion.ai) healthcare AI platform.
 
-**One-line pitch.** MaternalGuard replaces the multi-tab chart hunt across pregnant patients with a single in-chat triage view. The LLM asks precisely which labs matter (AST, platelets, blood pressure, urine protein) via MCP tools, and MaternalGuard returns one card per patient with a RED / YELLOW / GREEN band, the contributing clinical signals, and draft FHIR Task and Flag resources. Every action is a draft; the clinician, not the LLM, executes.
+**Assembled with Confidence.** MaternalGuard is a maternal-health copilot built to answer the three barriers Prompt Opinion names as the reason healthcare AI has not shipped at the bedside: **fragmentation**, **trust**, and **assembly cost**.
 
-**Governed write-back.** Approve, Reject, Save edits, Activate, and Dismiss buttons in the chat route back into this same MCP server. Task.status stays `requested` until a clinician clicks Approve; Flag.status stays `inactive` until a clinician clicks Activate. Every state transition writes a FHIR Provenance record. No LLM output ever lands on a chart directly.
+**Fragmentation (from 1000 clicks to a copilot).** One in-chat triage view assembles Patient, Condition, Observation, MedicationRequest, Coverage, Task, and Flag through 10 composable MCP tools, so the LLM asks precisely which labs matter (AST, platelets, blood pressure, urine protein) instead of dumping a static RAG blob. The Morning Huddle dashboard replaces the multi-tab chart hunt across a whole cohort with one card per patient: a RED / YELLOW / GREEN urgency band, the contributing HELLP-evolution signals, and one-click Approve / Reject buttons on the draft actions the specialist agent has queued.
+
+**Trust (no LLM output lands on a chart).** Every write is a draft. Task.status stays `requested` and Flag.status stays `inactive` until a clinician clicks Approve or Activate. Every state transition writes a FHIR Provenance record, and every Provenance now carries the HL7 AI Transparency on FHIR AI-Provenance profile plus an ONC HTI-1 45 CFR 170.315(b)(11)(iv)(A) Evidence-Based DSI source-attribute payload (the same CHAI Applied Model Card shape Darena Solutions/MeldRx ships to certified customers), so a downstream reviewer can trace exactly which rule fired, on what evidence, at what DSI version. Approve, Reject, Save edits, Activate, and Dismiss buttons in the chat route back into this same MCP server.
+
+**Assembly cost (one server, ten tools, real standards).** One TypeScript MCP server exposes 10 tools that already speak SMART-on-FHIR, USCDI v3 (Assessment and Plan of Treatment via Task, Care Team Members via Task.owner, Health Concerns via Flag, Provenance), HEDIS Prenatal & Postpartum Care (NCQA PPC, NQF #1517, with CPT Category II 0500F / 0503F auto-tagged on Task.reasonCode), and the CHAI Applied Model Card. Deploy the Prompt Opinion marketplace listing, point it at any FHIR R4 store, done.
 
 **Why MCP over RAG.** RAG stuffs a static blob of "what the model might need" into a prompt. MCP lets the LLM ask precisely what it needs, when it needs it. For a maternal-health workflow that means today's AST vs. two weeks ago, this patient's specific urine protein history, and the current pregnancy Condition — not a corpus dump.
 
@@ -47,6 +51,18 @@ MaternalGuard is the only Prompt Opinion marketplace tool that combines, in one 
 6. A bundled cohort panel scan that ranks patients by HELLP-evolution signal strength for morning huddle and panel triage workflows.
 
 This combination is the moat. Each individual capability could be reimplemented by another team in a weekend, but the composition (clinical-evidence engine, generative reasoning layer, A2A orchestration, governed write-back, panel triage, all over open standards) takes deliberate design and is hard to replicate by prompting alone.
+
+## Standards alignment (HTI-1 / USCDI v3 / HEDIS PPC / AI Transparency on FHIR)
+
+MaternalGuard's write-back path is not a MaternalGuard invention. Every draft Task, Flag, and Provenance is on a real, published wire shape a certified EHR or a payer analytics engine already knows how to consume.
+
+**USCDI v3.1 alignment (ONC 45 CFR 170.213, HTI-1, effective 2026-01-01).** MaternalGuard's Task write-back satisfies the Assessment and Plan of Treatment data class (US Core CarePlan Profile pattern, extended with Care Team Members via `Task.owner`), the Flag write-back satisfies the Health Concerns data class (US Core Condition Problems and Health Concerns Profile pattern, category `health-concern`), and every write emits a paired Provenance resource satisfying the Provenance data class (US Core Provenance Profile, Author + Author Organization + Author Time Stamp).
+
+**DSI Source Attribute Transparency (ONC 45 CFR 170.315(b)(11), HTI-1 final rule 89 FR 1192, 11 Mar 2024).** Every `buildProvenance` output now conforms to the HL7 AI Transparency on FHIR IG (`hl7.fhir.uv.aitransparency`, v1.0.0-ballot, DSTU January 2026): `meta.profile` pins the AI-Provenance canonical, `meta.security` carries the AIAST label (Artificial Intelligence Asserted, HL7 v3 ObservationValue), `agent.who` references a contained AI-Device (with the IG's canonical `aitransparency.AIKind` and `aitransparency.modelCardDescription` extensions), and the AI-Device points at a contained AI-ModelCard `DocumentReference` that carries the CHAI Applied Model Card JSON (`coalition-for-health-ai/mc-schema`, the same transparency artifact Darena Solutions/MeldRx integrated into their certified product). A MaternalGuard-minted summary extension also renders the 13 Evidence-Based (b)(11)(iv)(A) source attributes inline on the Provenance so a reviewer sees the transparency payload without following the DocumentReference.
+
+**HEDIS Prenatal & Postpartum Care alignment (NCQA PPC, NQF #1517, active through HEDIS MY 2026).** `buildDraftTask` auto-tags `Task.reasonCode` with the NCQA HEDIS identifier (`system http://ncqa.org/hedis/identifiers`, `value PPC`) plus the numerator-satisfying CPT Category II code (`http://www.ama-assn.org/go/cpt` `0500F` for prenatal or `0503F` for postpartum, per the NC DHHS HEDIS PPC F-codes fact sheet and NCQA's own value sets), and `Task.basedOn` points at the NCQA canonical Measure URL (`http://ncqa.org/fhir/hedis/Measure/measure-ppc-fhir`). A downstream measure-reporting engine can pick a MaternalGuard-authored Task up as a numerator hit without any brittle text matching.
+
+This is the concrete answer to "can this run in a real health system today": the wire shape is what CMS Medicaid Core Sets (CMIT ID 581), NCQA HEDIS reporting, and ONC-certified Health IT already expect.
 
 ## Design philosophy: deterministic plus generative
 

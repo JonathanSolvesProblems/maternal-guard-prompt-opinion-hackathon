@@ -462,6 +462,24 @@ class OpenMaternalDashboardTool implements IMcpTool {
             }
           }
 
+          // Per-patient empty state. When a patient made it through the
+          // pregnancy guard and the urgency classifier but has no draft
+          // Tasks or Flags yet, the huddle card is otherwise just a score
+          // with no next action. Point the clinician at the exact seed
+          // prompt that will make ProposeMaternalAction fire, so the
+          // dashboard doubles as the discovery surface for the write tool.
+          if (p.tasks.length === 0 && p.flags.length === 0) {
+            inner.push(separator());
+            inner.push(
+              alert({ variant: "default" }, [
+                alertTitle("No draft actions yet"),
+                alertDescription(
+                  'Ask the agent: "Assess maternal risk for this patient and draft the appropriate follow-up actions." The agent will call ProposeMaternalAction and any drafts will appear here for one-click Approve / Reject.',
+                ),
+              ]),
+            );
+          }
+
           return card({ cssClass: "border-slate-200 bg-white" }, [
             cardHeader({}, [
               row({ gap: 2, align: "center", justify: "between" }, [
