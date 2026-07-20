@@ -136,12 +136,17 @@ class UpdateMaternalActionTool implements IMcpTool {
                 { isError: true },
               );
             }
-            if (input.action === "reject" && !input.reason) {
-              return McpUtilities.createTextResponse(
-                "reject requires a 'reason' explaining the clinician's rationale.",
-                { isError: true },
-              );
-            }
+            // Reject NO LONGER requires a typed reason. The dashboard is
+            // meant to be a one-click surface (Pawan's "1000 clicks to
+            // copilots" thesis); we don't want to block the button on a
+            // free-text field. Chat callers can still pass a reason
+            // string; if omitted we record a default so the audit trail
+            // stays populated.
+            const rejectionReason =
+              input.action === "reject"
+                ? (input.reason && input.reason.trim()) ||
+                  "Rejected by clinician during huddle review"
+                : undefined;
 
             const existing = await FhirClientInstance.read<fhirR4.Task>(
               req,
@@ -188,7 +193,7 @@ class UpdateMaternalActionTool implements IMcpTool {
                 input.action === "approve"
                   ? `Approved by clinician.${input.clinicianNote ? " Note: " + input.clinicianNote : ""}`
                   : input.action === "reject"
-                    ? `Rejected by clinician. Reason: ${input.reason}`
+                    ? `Rejected by clinician. Reason: ${rejectionReason}`
                     : `Coordination edited by clinician.${input.clinicianNote ? " Note: " + input.clinicianNote : ""}`,
               time: new Date().toISOString(),
             };
@@ -197,7 +202,7 @@ class UpdateMaternalActionTool implements IMcpTool {
               updated.status = "accepted" as fhirR4.Task["status"];
             } else if (input.action === "reject") {
               updated.status = "rejected" as fhirR4.Task["status"];
-              updated.statusReason = { text: input.reason ?? undefined };
+              updated.statusReason = { text: rejectionReason };
             }
 
             if (input.action === "edit-coordination") {
@@ -237,11 +242,13 @@ class UpdateMaternalActionTool implements IMcpTool {
               updated,
             );
 
+            const effectiveTaskReason =
+              input.action === "reject" ? rejectionReason : input.reason;
             const provenance = buildProvenance({
               patientId: existing.for?.reference?.replace("Patient/", "") ?? "",
               targetResourceType: "Task",
               targetResourceId: input.taskId,
-              reason: `UpdateMaternalAction action=${input.action}${input.reason ? " reason=" + input.reason : ""}`,
+              reason: `UpdateMaternalAction action=${input.action}${effectiveTaskReason ? " reason=" + effectiveTaskReason : ""}`,
               toolName: "UpdateMaternalAction",
             });
             await FhirClientInstance.create(req, "Provenance", provenance);
@@ -269,12 +276,14 @@ class UpdateMaternalActionTool implements IMcpTool {
                 { isError: true },
               );
             }
-            if (input.action === "dismiss-flag" && !input.reason) {
-              return McpUtilities.createTextResponse(
-                "dismiss-flag requires a 'reason' explaining the clinician's rationale.",
-                { isError: true },
-              );
-            }
+            // Dismiss NO LONGER requires a typed reason (same rationale
+            // as reject on Tasks: the dashboard is a one-click surface).
+            // Server supplies a sensible default so audit stays populated.
+            const dismissReason =
+              input.action === "dismiss-flag"
+                ? (input.reason && input.reason.trim()) ||
+                  "Dismissed by clinician during huddle review"
+                : undefined;
 
             const existing = await FhirClientInstance.read<fhirR4.Flag>(
               req,
@@ -337,12 +346,16 @@ class UpdateMaternalActionTool implements IMcpTool {
               updated,
             );
 
+            const effectiveFlagReason =
+              input.action === "dismiss-flag"
+                ? dismissReason
+                : input.reason;
             const provenance = buildProvenance({
               patientId:
                 existing.subject?.reference?.replace("Patient/", "") ?? "",
               targetResourceType: "Flag",
               targetResourceId: input.flagId,
-              reason: `UpdateMaternalAction action=${input.action}${input.reason ? " reason=" + input.reason : ""}`,
+              reason: `UpdateMaternalAction action=${input.action}${effectiveFlagReason ? " reason=" + effectiveFlagReason : ""}`,
               toolName: "UpdateMaternalAction",
             });
             await FhirClientInstance.create(req, "Provenance", provenance);

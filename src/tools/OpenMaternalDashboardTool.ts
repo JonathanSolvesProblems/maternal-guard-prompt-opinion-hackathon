@@ -27,8 +27,6 @@ import {
   muted,
   badge,
   metric,
-  input,
-  label,
   button,
   separator,
   alert,
@@ -68,16 +66,6 @@ function isMaternalGuardFlag(f: fhirR4.Flag): boolean {
   );
 }
 
-// Compute the whole hours between now and a Task's restriction period end.
-// Falls back to 24 when the Task has no due date. Never returns negative.
-function _dueHoursFromTask(task: fhirR4.Task): string {
-  const end = task.restriction?.period?.end;
-  if (!end) return "24";
-  const dueMs = new Date(end).getTime();
-  if (Number.isNaN(dueMs)) return "24";
-  const diffH = Math.round((dueMs - Date.now()) / 3600_000);
-  return String(Math.max(0, diffH));
-}
 
 class OpenMaternalDashboardTool implements IMcpTool {
   registerTool(server: McpServer, req: Request) {
@@ -314,48 +302,39 @@ class OpenMaternalDashboardTool implements IMcpTool {
             }
           }
 
+          // Dashboard tasks: buttons-only. Approve is one click — no
+          // Clinician-note field to fill in. Reject is one click — the
+          // server records a default reason ("Rejected by clinician
+          // during huddle review") so the audit trail is populated
+          // without asking the clinician to type. Save-edits is a
+          // deliberate detour; it belongs behind an explicit Edit
+          // affordance, not on the primary triage card. This matches
+          // Pawan's "from 1000 clicks to copilots" thesis: the whole
+          // reason the dashboard exists is to remove typing.
           if (p.tasks.length) {
             inner.push(separator());
             inner.push(text(`Draft tasks (${p.tasks.length})`, { bold: true }));
 
-            for (const [tIdx, task] of p.tasks.entries()) {
+            for (const task of p.tasks) {
               const tid = task.id ?? "";
               const status = task.status ?? "";
               const desc = (task.description ?? "").split("\n")[0].slice(0, 120);
-              const prefix = `t_${p.id.slice(0, 8)}_${pIdx}_${tIdx}`;
+              const owner = task.owner?.display;
+              const dueEnd = task.restriction?.period?.end;
 
-              const editFields = grid({ minColumnWidth: "220px", gap: 2 }, [
-                column({ gap: 1 }, [
-                  label("Owner"),
-                  input({
-                    name: `${prefix}_owner`,
-                    value: task.owner?.display ?? "",
-                  }),
-                ]),
-                column({ gap: 1 }, [
-                  label("Due (hours from now)"),
-                  input({
-                    name: `${prefix}_due_hours`,
-                    value: _dueHoursFromTask(task),
-                    inputType: "number",
-                  }),
-                ]),
-                column({ gap: 1 }, [
-                  label("Clinician note"),
-                  input({ name: `${prefix}_note`, value: "" }),
-                ]),
-              ]);
+              const metaBits: string[] = [];
+              if (owner) metaBits.push(`Owner: ${owner}`);
+              if (dueEnd) {
+                const dueStr = typeof dueEnd === "string" ? dueEnd : dueEnd.toISOString();
+                metaBits.push(`Due: ${dueStr.slice(0, 16).replace("T", " ")}`);
+              }
 
               const buttonsRow = row({ gap: 2 }, [
                 button("Approve", {
                   variant: "default",
                   onClick: callTool({
                     tool: "UpdateMaternalAction",
-                    arguments: {
-                      action: "approve",
-                      taskId: tid,
-                      clinicianNote: `{{ ${prefix}_note }}`,
-                    },
+                    arguments: { action: "approve", taskId: tid },
                     onSuccess: [
                       showToast({
                         message: "Approved",
@@ -373,11 +352,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
                   variant: "outline",
                   onClick: callTool({
                     tool: "UpdateMaternalAction",
-                    arguments: {
-                      action: "reject",
-                      taskId: tid,
-                      reason: `{{ ${prefix}_note }}`,
-                    },
+                    arguments: { action: "reject", taskId: tid },
                     onSuccess: [
                       showToast({
                         message: "Rejected",
@@ -386,30 +361,6 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     ],
                     onError: showToast({
                       message: "Reject failed",
-                      description: "See server logs.",
-                      variant: "error",
-                    }),
-                  }),
-                }),
-                button("Save edits", {
-                  variant: "secondary",
-                  onClick: callTool({
-                    tool: "UpdateMaternalAction",
-                    arguments: {
-                      action: "edit-coordination",
-                      taskId: tid,
-                      ownerDisplay: `{{ ${prefix}_owner }}`,
-                      dueWithinHours: `{{ ${prefix}_due_hours }}`,
-                      clinicianNote: `{{ ${prefix}_note }}`,
-                    },
-                    onSuccess: [
-                      showToast({
-                        message: "Saved",
-                        description: "Coordination metadata updated.",
-                      }),
-                    ],
-                    onError: showToast({
-                      message: "Save failed",
                       description: "See server logs.",
                       variant: "error",
                     }),
@@ -429,7 +380,9 @@ class OpenMaternalDashboardTool implements IMcpTool {
                       text(desc, { bold: true }),
                       badge(status, "secondary"),
                     ]),
-                    editFields,
+                    metaBits.length
+                      ? muted(metaBits.join("  ·  "))
+                      : muted(""),
                     status === "requested" ? buttonsRow : muted(`Status: ${status}`),
                   ],
                 ),
@@ -437,14 +390,16 @@ class OpenMaternalDashboardTool implements IMcpTool {
             }
           }
 
+          // Flags: same rule. Activate is one click. Dismiss is one
+          // click; server supplies default reason "Dismissed by
+          // clinician during huddle review" so the audit is populated.
           if (p.flags.length) {
             inner.push(separator());
             inner.push(text(`Draft flags (${p.flags.length})`, { bold: true }));
-            for (const [fIdx, f] of p.flags.entries()) {
+            for (const f of p.flags) {
               const fid = f.id ?? "";
               const fst = f.status ?? "";
               const finding = f.code?.text ?? "(no finding)";
-              const prefix = `f_${p.id.slice(0, 8)}_${pIdx}_${fIdx}`;
 
               const flagButtons =
                 fst === "inactive"
@@ -471,11 +426,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
                         variant: "outline",
                         onClick: callTool({
                           tool: "UpdateMaternalAction",
-                          arguments: {
-                            action: "dismiss-flag",
-                            flagId: fid,
-                            reason: `{{ ${prefix}_reason }}`,
-                          },
+                          arguments: { action: "dismiss-flag", flagId: fid },
                           onSuccess: [
                             showToast({
                               message: "Dismissed",
@@ -504,12 +455,6 @@ class OpenMaternalDashboardTool implements IMcpTool {
                       text(finding, { bold: true }),
                       badge(fst, "secondary"),
                     ]),
-                    fst === "inactive"
-                      ? column({ gap: 1 }, [
-                          label("Reason if dismissing"),
-                          input({ name: `${prefix}_reason`, value: "" }),
-                        ])
-                      : muted(""),
                     flagButtons,
                   ],
                 ),
