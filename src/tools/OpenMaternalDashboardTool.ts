@@ -329,6 +329,17 @@ class OpenMaternalDashboardTool implements IMcpTool {
                 metaBits.push(`Due: ${dueStr.slice(0, 16).replace("T", " ")}`);
               }
 
+              // Each button's onSuccess chain fires two actions:
+              //   1) the confirmation toast (visual "done" cue)
+              //   2) an auto re-invocation of OpenMaternalDashboard so the
+              //      just-actioned draft disappears from the huddle (the
+              //      draft-only filter hides accepted/rejected tasks).
+              // The clinician SEES the state change instead of having to
+              // trust the toast and remember to re-open the dashboard.
+              const refreshDashboard = callTool({
+                tool: "OpenMaternalDashboard",
+                arguments: { mode: "default" },
+              });
               const buttonsRow = row({ gap: 2 }, [
                 button("Approve", {
                   variant: "default",
@@ -338,8 +349,9 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     onSuccess: [
                       showToast({
                         message: "Approved",
-                        description: "Task moved to accepted.",
+                        description: "Task moved to accepted. Dashboard refreshing below.",
                       }),
+                      refreshDashboard,
                     ],
                     onError: showToast({
                       message: "Approve failed",
@@ -356,8 +368,9 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     onSuccess: [
                       showToast({
                         message: "Rejected",
-                        description: "Task closed with reason.",
+                        description: "Task closed with reason. Dashboard refreshing below.",
                       }),
+                      refreshDashboard,
                     ],
                     onError: showToast({
                       message: "Reject failed",
@@ -401,6 +414,13 @@ class OpenMaternalDashboardTool implements IMcpTool {
               const fst = f.status ?? "";
               const finding = f.code?.text ?? "(no finding)";
 
+              // Same refresh-on-success pattern as task buttons: dashboard
+              // re-invokes itself after the state transition so the
+              // just-actioned flag disappears from the huddle.
+              const refreshFlagDashboard = callTool({
+                tool: "OpenMaternalDashboard",
+                arguments: { mode: "default" },
+              });
               const flagButtons =
                 fst === "inactive"
                   ? row({ gap: 2 }, [
@@ -412,8 +432,9 @@ class OpenMaternalDashboardTool implements IMcpTool {
                           onSuccess: [
                             showToast({
                               message: "Activated",
-                              description: "Flag is now visible.",
+                              description: "Flag is now visible. Dashboard refreshing below.",
                             }),
+                            refreshFlagDashboard,
                           ],
                           onError: showToast({
                             message: "Activate failed",
@@ -430,8 +451,9 @@ class OpenMaternalDashboardTool implements IMcpTool {
                           onSuccess: [
                             showToast({
                               message: "Dismissed",
-                              description: "Flag closed.",
+                              description: "Flag closed. Dashboard refreshing below.",
                             }),
+                            refreshFlagDashboard,
                           ],
                           onError: showToast({
                             message: "Dismiss failed",
