@@ -8,7 +8,11 @@ import { NullUtilities } from "../null-utilities";
 import { FhirClientInstance } from "../fhir-client";
 import { fhirR4 } from "@smile-cdr/fhirts";
 
-// Common LOINC codes for maternal monitoring
+// Common LOINC codes for maternal monitoring. Canonical keys are
+// lowercase-hyphenated (kept for backward compat with the tool
+// description). Case-insensitive matching + alias handling lives in
+// resolveLabTypeCode() below so the tool accepts the wide range of
+// natural phrasings the model actually emits.
 const LOINC_CODES: Record<string, { code: string; display: string }> = {
   "blood-pressure": { code: "85354-9", display: "Blood Pressure Panel" },
   "systolic-bp": { code: "8480-6", display: "Systolic Blood Pressure" },
@@ -24,6 +28,85 @@ const LOINC_CODES: Record<string, { code: string; display: string }> = {
   alt: { code: "1742-6", display: "ALT [Enzymatic activity/volume] in Serum or Plasma" },
   weight: { code: "29463-7", display: "Body Weight" },
 };
+
+// Every natural phrasing the model tends to emit, mapped to the
+// canonical LOINC_CODES key. Values here MUST exist as keys in
+// LOINC_CODES. Case is normalised before lookup.
+const LAB_TYPE_ALIASES: Record<string, string> = {
+  // blood pressure
+  "blood-pressure": "blood-pressure",
+  "bloodpressure": "blood-pressure",
+  "bp": "blood-pressure",
+  "blood-pressure-panel": "blood-pressure",
+  // systolic / diastolic
+  "systolic": "systolic-bp",
+  "systolic-bp": "systolic-bp",
+  "systolic-blood-pressure": "systolic-bp",
+  "sbp": "systolic-bp",
+  "diastolic": "diastolic-bp",
+  "diastolic-bp": "diastolic-bp",
+  "diastolic-blood-pressure": "diastolic-bp",
+  "dbp": "diastolic-bp",
+  // glucose
+  "glucose": "glucose",
+  "blood-glucose": "glucose",
+  "serum-glucose": "glucose",
+  "fasting-glucose": "fasting-glucose",
+  "fasting-blood-glucose": "fasting-glucose",
+  "fasting-blood-sugar": "fasting-glucose",
+  "fbs": "fasting-glucose",
+  // hgb / hct
+  "hemoglobin": "hemoglobin",
+  "haemoglobin": "hemoglobin",
+  "hgb": "hemoglobin",
+  "hb": "hemoglobin",
+  "hematocrit": "hematocrit",
+  "haematocrit": "hematocrit",
+  "hct": "hematocrit",
+  // platelets
+  "platelets": "platelets",
+  "platelet": "platelets",
+  "platelet-count": "platelets",
+  "plt": "platelets",
+  // protein / proteinuria
+  "protein": "proteinuria",
+  "proteinuria": "proteinuria",
+  "urine-protein": "proteinuria",
+  "urinary-protein": "proteinuria",
+  "spot-protein": "proteinuria",
+  // uric acid
+  "uric-acid": "uric-acid",
+  "urate": "uric-acid",
+  // liver enzymes
+  "ast": "ast",
+  "aspartate-aminotransferase": "ast",
+  "sgot": "ast",
+  "alt": "alt",
+  "alanine-aminotransferase": "alt",
+  "sgpt": "alt",
+  // weight
+  "weight": "weight",
+  "body-weight": "weight",
+  "maternal-weight": "weight",
+};
+
+/**
+ * Map an arbitrary lab-type string from the model to a canonical LOINC
+ * code. Case-insensitive; underscores / spaces normalise to hyphens;
+ * common clinical aliases are honoured (see LAB_TYPE_ALIASES).
+ * Returns null when nothing matches.
+ */
+function resolveLabTypeCode(raw: string): string | null {
+  const norm = raw.toLowerCase().trim().replace(/[\s_]+/g, "-");
+  const canonical = LAB_TYPE_ALIASES[norm];
+  if (canonical && LOINC_CODES[canonical]) {
+    return LOINC_CODES[canonical].code;
+  }
+  if (LOINC_CODES[norm]) {
+    return LOINC_CODES[norm].code;
+  }
+  return null;
+}
 
 // Pregnancy reference ranges for key labs
 const PREGNANCY_REFERENCE_RANGES: Record<string, string> = {
@@ -48,7 +131,7 @@ class InterpretLabTrendsTool implements IMcpTool {
       "InterpretLabTrends",
       {
         description:
-          "Longitudinal lab/vital trends from FHIR with pregnancy reference ranges. Supports: blood-pressure, glucose, fasting-glucose, hemoglobin, hematocrit, platelets, proteinuria, uric-acid, ast, alt, weight. Returns JSON only. NOT for interactive dashboards / visual triage boards — for those, call OpenMaternalDashboard instead.",
+          "Longitudinal lab/vital trends from FHIR with pregnancy reference ranges. Accepts labTypes as an array of strings; matching is case-insensitive and honours common aliases (Platelets/Platelet/PLT, Protein/Proteinuria/Urine Protein, BP/Blood Pressure, Fasting Glucose/FBS, Hgb/Hemoglobin, HCT/Hematocrit, AST/SGOT, ALT/SGPT, Uric Acid/Urate, Weight). Canonical types: blood-pressure, systolic-bp, diastolic-bp, glucose, fasting-glucose, hemoglobin, hematocrit, platelets, proteinuria, uric-acid, ast, alt, weight. Omit labTypes to fetch all. Returns JSON only. NOT for interactive dashboards / visual triage boards — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()
@@ -76,20 +159,47 @@ class InterpretLabTrendsTool implements IMcpTool {
             );
           }
 
-          const codesToQuery = labTypes?.length
-            ? labTypes
-                .filter((lt) => LOINC_CODES[lt])
-                .map((lt) => LOINC_CODES[lt]!.code)
+          // Case-insensitive + alias-aware lookup. Previous strict
+          // literal match caused the model to loop on "Platelets" vs
+          // "platelets" and Prompt Opinion tinted the tool row red on
+          // repeated no-match returns. Log the input and the resolved
+          // codes so we can see if the model is guessing shapes we
+          // still don't cover.
+          const resolvedCodes = labTypes?.length
+            ? Array.from(
+                new Set(
+                  labTypes
+                    .map((lt) => resolveLabTypeCode(lt))
+                    .filter((c): c is string => c !== null),
+                ),
+              )
             : Object.values(LOINC_CODES).map((v) => v.code);
+          if (labTypes?.length) {
+            const unresolved = labTypes.filter(
+              (lt) => resolveLabTypeCode(lt) === null,
+            );
+            if (unresolved.length) {
+              console.warn(
+                `[InterpretLabTrends] unresolved labTypes (kept resolved ones and continued): ${JSON.stringify(unresolved)}`,
+              );
+            }
+          }
+          const codesToQuery = resolvedCodes;
 
           if (codesToQuery.length === 0) {
-            // All requested lab types were unrecognized. Explain to the model
-            // rather than issuing a malformed `code=` FHIR search.
+            // Every requested lab type was unrecognisable even after
+            // alias + case normalisation. Return a soft response with
+            // both the canonical vocabulary AND common aliases so the
+            // model can retry with a valid string without the caller
+            // seeing a red banner.
             return McpUtilities.createJsonResponse({
               patientId,
               trends: [],
-              note: "None of the requested labTypes are recognized. Choose from: " +
-                Object.keys(LOINC_CODES).join(", "),
+              note:
+                "None of the requested labTypes matched a known LOINC code even after alias + case normalisation. " +
+                "Canonical types: " +
+                Object.keys(LOINC_CODES).join(", ") +
+                ". Common aliases the tool also accepts: Platelets/PLT, Protein/Proteinuria/Urine Protein, BP/Blood Pressure, Fasting Glucose/FBS, Hgb/Hemoglobin, HCT/Hematocrit, AST/SGOT, ALT/SGPT, Uric Acid/Urate, Weight. Omit the labTypes field entirely to fetch all supported labs.",
             });
           }
 
