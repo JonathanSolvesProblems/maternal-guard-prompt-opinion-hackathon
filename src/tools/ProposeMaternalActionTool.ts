@@ -226,6 +226,11 @@ class ProposeMaternalActionTool implements IMcpTool {
             "Task",
             draftTask,
           );
+          if (createdTask?.id) {
+            console.log(
+              `[ProposeMaternalAction] created Task id=${createdTask.id} recommendation="${input.recommendation}"`,
+            );
+          }
 
           // Server-side Flag de-duplication.
           // When the agent calls ProposeMaternalAction multiple times in a
@@ -295,6 +300,11 @@ class ProposeMaternalActionTool implements IMcpTool {
                 "Flag",
                 draftFlag,
               );
+              if (createdFlag?.id) {
+                console.log(
+                  `[ProposeMaternalAction] created Flag id=${createdFlag.id} finding="${input.flagFinding}"`,
+                );
+              }
             }
           }
 

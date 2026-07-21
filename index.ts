@@ -138,11 +138,23 @@ app.post("/mcp", async (req, res) => {
       // Log only the KEYS of the arguments; values may include PHI (patient
       // IDs, clinician notes, free-text rationale). Enable value logging by
       // setting MATERNALGUARD_DEBUG_ARGS=true; keep OFF in production.
-      const argKeys = Object.keys(req.body.params.arguments || {});
+      //
+      // EXCEPTION: log server-generated resource UUIDs (taskId, flagId) as
+      // values. These are NOT PHI — they are opaque identifiers minted by
+      // the FHIR server — and having them in the log is the fastest way to
+      // paste into the Postman validation collection to verify a write
+      // actually persisted. patientId is intentionally excluded because it
+      // maps back to a person; use x-patient-id=PRESENT/MISSING for that.
+      const args = req.body.params.arguments || {};
+      const argKeys = Object.keys(args);
+      const idBits: string[] = [];
+      if (typeof args.taskId === "string" && args.taskId) idBits.push(`taskId=${args.taskId}`);
+      if (typeof args.flagId === "string" && args.flagId) idBits.push(`flagId=${args.flagId}`);
+      const idsPart = idBits.length ? ` ids=[${idBits.join(",")}]` : "";
       if (process.env["MATERNALGUARD_DEBUG_ARGS"] === "true") {
-        console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(req.body.params.arguments || {})} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
+        console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(args)} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
       } else {
-        console.log(`[MCP]   tool=${req.body.params.name} argKeys=[${argKeys.join(",")}] token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
+        console.log(`[MCP]   tool=${req.body.params.name} argKeys=[${argKeys.join(",")}]${idsPart} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
       }
     } else {
       // Log presence of patient-id, not the value, so patient identifiers do
