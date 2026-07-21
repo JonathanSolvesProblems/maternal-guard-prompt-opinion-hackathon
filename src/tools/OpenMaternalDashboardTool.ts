@@ -48,8 +48,17 @@ interface PanelEntry {
   id: string;
   display: string;
   urgency: UrgencyAssessment;
+  // `tasks` and `flags` are DRAFTS only (Task.status=requested,
+  // Flag.status=inactive) — actionable in the dashboard.
   tasks: fhirR4.Task[];
   flags: fhirR4.Flag[];
+  // `resolvedTasks` and `resolvedFlags` are recently-actioned items
+  // (accepted / rejected / active / entered-in-error), capped at the 5
+  // most-recent per axis. They render in a "Recently actioned" section
+  // so the clinician can SEE where a just-approved task went instead of
+  // trusting the toast and wondering.
+  resolvedTasks: fhirR4.Task[];
+  resolvedFlags: fhirR4.Flag[];
 }
 
 function isMaternalGuardTask(t: fhirR4.Task): boolean {
@@ -216,27 +225,61 @@ class OpenMaternalDashboardTool implements IMcpTool {
                 labReadings: labs,
               });
 
-              // The morning-huddle dashboard is a "what needs your
-              // attention" view, not a chart audit trail. Only surface
-              // MaternalGuard drafts that are still pending clinician
-              // review — Tasks in `requested` and Flags in `inactive`.
-              // Already-approved (accepted), rejected, cancelled, or
-              // clinician-activated / dismissed items belong in the
-              // patient's chart history, not on the huddle card.
-              const mgTasks = (tasks?.entry ?? [])
+              // Split MaternalGuard-tagged Tasks and Flags by lifecycle:
+              //   drafts     - actionable in the dashboard (with buttons)
+              //   resolved   - historical, shown in a muted
+              //                "Recently actioned" section so the
+              //                clinician sees WHERE a just-approved
+              //                task went instead of it silently
+              //                vanishing.
+              // Resolved lists are capped at 5 most-recent per axis,
+              // sorted by lastModified (falls back to authoredOn for
+              // Tasks / period.start for Flags) descending.
+              // Some fhirR4 date fields are typed `string | Date` in
+              // @smile-cdr/fhirts. Coerce to ISO string for sort keys.
+              const asIso = (v: string | Date | undefined): string => {
+                if (!v) return "";
+                if (typeof v === "string") return v;
+                return v.toISOString();
+              };
+              const allMgTasks = (tasks?.entry ?? [])
                 .map((e) => e.resource as fhirR4.Task)
-                .filter(isMaternalGuardTask)
-                .filter((t) => t.status === "requested");
-              const mgFlags = (flags?.entry ?? [])
+                .filter(isMaternalGuardTask);
+              const mgTasks = allMgTasks.filter((t) => t.status === "requested");
+              const resolvedTasks = allMgTasks
+                .filter((t) => t.status && t.status !== "requested")
+                .sort((a, b) => {
+                  const ak = asIso(a.lastModified) || asIso(a.authoredOn);
+                  const bk = asIso(b.lastModified) || asIso(b.authoredOn);
+                  return bk.localeCompare(ak);
+                })
+                .slice(0, 5);
+              const allMgFlags = (flags?.entry ?? [])
                 .map((e) => e.resource as fhirR4.Flag)
-                .filter(isMaternalGuardFlag)
-                .filter((f) => f.status === "inactive");
+                .filter(isMaternalGuardFlag);
+              const mgFlags = allMgFlags.filter((f) => f.status === "inactive");
+              const resolvedFlags = allMgFlags
+                .filter((f) => f.status && f.status !== "inactive")
+                .sort((a, b) => {
+                  const ak = asIso(a.period?.start);
+                  const bk = asIso(b.period?.start);
+                  return bk.localeCompare(ak);
+                })
+                .slice(0, 5);
 
               const family = patient.name?.[0]?.family ?? "";
               const given = (patient.name?.[0]?.given ?? []).join(" ");
               const display = `${family}${given ? ", " + given : ""}` || pid;
 
-              return { id: pid, display, urgency, tasks: mgTasks, flags: mgFlags };
+              return {
+                id: pid,
+                display,
+                urgency,
+                tasks: mgTasks,
+                flags: mgFlags,
+                resolvedTasks,
+                resolvedFlags,
+              };
             } catch (err) {
               // Surface the error to the server log so an expired FHIR
               // token or a 4xx on one patient does not vanish silently.
@@ -349,7 +392,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     onSuccess: [
                       showToast({
                         message: "Approved",
-                        description: "Task moved to accepted. Dashboard refreshing below.",
+                        description: "Task moved to accepted. See it under Recently actioned in the refreshed dashboard below.",
                       }),
                       refreshDashboard,
                     ],
@@ -368,7 +411,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     onSuccess: [
                       showToast({
                         message: "Rejected",
-                        description: "Task closed with reason. Dashboard refreshing below.",
+                        description: "Task rejected with default audit reason. See it under Recently actioned in the refreshed dashboard below.",
                       }),
                       refreshDashboard,
                     ],
@@ -432,7 +475,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
                           onSuccess: [
                             showToast({
                               message: "Activated",
-                              description: "Flag is now visible. Dashboard refreshing below.",
+                              description: "Flag activated on the chart. See it under Recently actioned in the refreshed dashboard below.",
                             }),
                             refreshFlagDashboard,
                           ],
@@ -451,7 +494,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
                           onSuccess: [
                             showToast({
                               message: "Dismissed",
-                              description: "Flag closed. Dashboard refreshing below.",
+                              description: "Flag dismissed with default audit reason. See it under Recently actioned in the refreshed dashboard below.",
                             }),
                             refreshFlagDashboard,
                           ],
@@ -484,13 +527,68 @@ class OpenMaternalDashboardTool implements IMcpTool {
             }
           }
 
-          // Per-patient empty state. When a patient made it through the
-          // pregnancy guard and the urgency classifier but has no draft
-          // Tasks or Flags yet, the huddle card is otherwise just a score
-          // with no next action. Point the clinician at the exact seed
-          // prompt that will make ProposeMaternalAction fire, so the
-          // dashboard doubles as the discovery surface for the write tool.
-          if (p.tasks.length === 0 && p.flags.length === 0) {
+          // Recently actioned: the muted "where did it go" section.
+          // Shows accepted / rejected Tasks and active / dismissed Flags
+          // so the clinician sees the destination of the last few
+          // decisions instead of items silently disappearing after a
+          // button click. Capped at 5 per axis in the sort/slice above.
+          if (p.resolvedTasks.length || p.resolvedFlags.length) {
+            inner.push(separator());
+            inner.push(
+              text(
+                `Recently actioned (${p.resolvedTasks.length + p.resolvedFlags.length})`,
+                { bold: true },
+              ),
+            );
+            for (const task of p.resolvedTasks) {
+              const desc = (task.description ?? "").split("\n")[0].slice(0, 100);
+              const status = task.status ?? "unknown";
+              const bv: BadgeVariant =
+                status === "accepted" ? "success" : "secondary";
+              inner.push(
+                row(
+                  {
+                    gap: 2,
+                    align: "center",
+                    justify: "between",
+                    cssClass:
+                      "rounded-md border border-slate-100 p-2 bg-slate-50",
+                  },
+                  [muted(desc), badge(status, bv)],
+                ),
+              );
+            }
+            for (const f of p.resolvedFlags) {
+              const finding = f.code?.text ?? "(no finding)";
+              const status = f.status ?? "unknown";
+              const bv: BadgeVariant =
+                status === "active" ? "success" : "secondary";
+              inner.push(
+                row(
+                  {
+                    gap: 2,
+                    align: "center",
+                    justify: "between",
+                    cssClass:
+                      "rounded-md border border-slate-100 p-2 bg-slate-50",
+                  },
+                  [muted(finding), badge(status, bv)],
+                ),
+              );
+            }
+          }
+
+          // Per-patient empty state. Only show the seed-prompt hint when
+          // the patient has ZERO drafts AND ZERO recently-actioned items
+          // (a truly untouched chart). If they have resolved items but no
+          // drafts, the Recently actioned section above communicates the
+          // state and the "No draft actions yet" alert would be noise.
+          if (
+            p.tasks.length === 0 &&
+            p.flags.length === 0 &&
+            p.resolvedTasks.length === 0 &&
+            p.resolvedFlags.length === 0
+          ) {
             inner.push(separator());
             inner.push(
               alert({ variant: "default" }, [
@@ -502,7 +600,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
             );
           }
 
-          return card({ cssClass: "border-slate-200 bg-white" }, [
+          return card({ cssClass: "border-slate-200 bg-white overflow-hidden" }, [
             cardHeader({}, [
               row({ gap: 2, align: "center", justify: "between" }, [
                 column({ gap: 1 }, [
@@ -533,7 +631,11 @@ class OpenMaternalDashboardTool implements IMcpTool {
         );
 
         const view = column(
-          { gap: 5, cssClass: "p-6 max-w-5xl mx-auto" },
+          // Iframe width in Prompt Opinion's chat panel is narrower than
+          // Tailwind's max-w-5xl (1024px). Drop the outer max-width and
+          // clip any accidental horizontal overflow so no scroll bar
+          // surfaces at the bottom of the card.
+          { gap: 5, cssClass: "p-4 max-w-full overflow-x-hidden" },
           [
             headerCard,
             metricsGrid,
