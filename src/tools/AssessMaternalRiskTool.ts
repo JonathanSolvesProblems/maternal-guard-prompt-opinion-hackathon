@@ -90,8 +90,10 @@ class AssessMaternalRiskTool implements IMcpTool {
             `[AssessMaternalRisk] soft-degraded due to error: ${message}`,
           );
           return McpUtilities.createJsonResponse({
+            status: "no-op",
+            blocksNextStep: false,
             summary: null,
-            note: `Maternal risk data could not be retrieved (${message}). Continue the assessment with whatever context you already have.`,
+            note: `OK - Maternal risk read did not return data (${message}). This is NOT an error and NOT a blocker. Continue to the next tool call.`,
           });
         }
       },

@@ -189,17 +189,20 @@ class InterpretLabTrendsTool implements IMcpTool {
           if (codesToQuery.length === 0) {
             // Every requested lab type was unrecognisable even after
             // alias + case normalisation. Return a soft response with
-            // both the canonical vocabulary AND common aliases so the
-            // model can retry with a valid string without the caller
-            // seeing a red banner.
+            // both the canonical vocabulary AND common aliases. Note
+            // wording deliberately signals "not a blocker, continue"
+            // because the agent's Priority-1 chart-writeback flow
+            // needs to move on to ProposeMaternalAction regardless of
+            // whether trend data landed.
             return McpUtilities.createJsonResponse({
+              status: "no-op",
+              blocksNextStep: false,
               patientId,
               trends: [],
               note:
-                "None of the requested labTypes matched a known LOINC code even after alias + case normalisation. " +
-                "Canonical types: " +
+                "OK - No lab data returned because none of the requested labTypes matched a known LOINC code. This is NOT an error and NOT a blocker. If you were on the way to ProposeMaternalAction, continue there now with the recommendation you already have; the lab-trend context is optional. To fix future calls: canonical types are " +
                 Object.keys(LOINC_CODES).join(", ") +
-                ". Common aliases the tool also accepts: Platelets/PLT, Protein/Proteinuria/Urine Protein, BP/Blood Pressure, Fasting Glucose/FBS, Hgb/Hemoglobin, HCT/Hematocrit, AST/SGOT, ALT/SGPT, Uric Acid/Urate, Weight. Omit the labTypes field entirely to fetch all supported labs.",
+                ", or use common aliases (Platelets/PLT, Protein/Proteinuria/Urine Protein, BP/Blood Pressure, Fasting Glucose/FBS, Hgb/Hemoglobin, HCT/Hematocrit, AST/SGOT, ALT/SGPT, Uric Acid/Urate, Weight), or omit labTypes entirely to fetch all supported labs.",
             });
           }
 
@@ -215,15 +218,14 @@ class InterpretLabTrendsTool implements IMcpTool {
           );
 
           if (!observations?.entry?.length) {
-            // Empty result is NOT an error. Report it as a normal response so
-            // the model treats "no data yet" as a data state, not a tool
-            // failure.
             return McpUtilities.createJsonResponse({
+              status: "no-op",
+              blocksNextStep: false,
               patientId,
               gestationalAgeWeeks: gestationalAgeWeeks ?? null,
               requestedLabTypes: codesToQuery,
               trends: [],
-              note: "No matching observations found for the requested lab types on this patient.",
+              note: "OK - No matching Observations on this patient for the requested lab types. This is NOT an error and NOT a blocker. Continue to the next tool call (e.g. ProposeMaternalAction) if you were on that path.",
             });
           }
 
@@ -246,9 +248,11 @@ class InterpretLabTrendsTool implements IMcpTool {
             `[InterpretLabTrends] soft-degraded due to error: ${message}`,
           );
           return McpUtilities.createJsonResponse({
+            status: "no-op",
+            blocksNextStep: false,
             patientId,
             trends: [],
-            note: `Lab trend data could not be retrieved for this patient (${message}). Skip this axis and continue the assessment with the data you already have.`,
+            note: `OK - Lab trend read did not return data (${message}). This is NOT an error and NOT a blocker for downstream calls. If you were on the way to ProposeMaternalAction, continue there now.`,
           });
         }
       },

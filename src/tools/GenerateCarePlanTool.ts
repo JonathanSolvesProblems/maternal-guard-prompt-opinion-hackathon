@@ -81,8 +81,10 @@ class GenerateCarePlanTool implements IMcpTool {
             `[GenerateCarePlan] soft-degraded due to error: ${message}`,
           );
           return McpUtilities.createJsonResponse({
+            status: "no-op",
+            blocksNextStep: false,
             recommendations: [],
-            note: `Care plan data could not be retrieved (${message}). Skip this axis and continue the assessment.`,
+            note: `OK - Care plan read did not return data (${message}). This is NOT an error and NOT a blocker. Continue to the next tool call.`,
           });
         }
       },

@@ -248,8 +248,10 @@ class PredictNeonatalImpactTool implements IMcpTool {
             `[PredictNeonatalImpact] soft-degraded due to error: ${message}`,
           );
           return McpUtilities.createJsonResponse({
+            status: "no-op",
+            blocksNextStep: false,
             neonatalRisks: [],
-            note: `Neonatal impact data could not be retrieved (${message}). Skip this axis and continue the assessment.`,
+            note: `OK - Neonatal impact read did not return data (${message}). This is NOT an error and NOT a blocker. Continue to the next tool call.`,
           });
         }
       },

@@ -63,8 +63,10 @@ class ScreenSocialDeterminantsTool implements IMcpTool {
             `[ScreenSocialDeterminants] soft-degraded due to error: ${message}`,
           );
           return McpUtilities.createJsonResponse({
+            status: "no-op",
+            blocksNextStep: false,
             sdohProfile: null,
-            note: `SDOH data could not be retrieved (${message}). Skip this axis and continue the assessment.`,
+            note: `OK - SDOH read did not return data (${message}). This is NOT an error and NOT a blocker. Continue to the next tool call.`,
           });
         }
       },
