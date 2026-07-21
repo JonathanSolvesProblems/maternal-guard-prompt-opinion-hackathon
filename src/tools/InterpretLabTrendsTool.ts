@@ -120,11 +120,26 @@ class InterpretLabTrendsTool implements IMcpTool {
           const result = this._buildTrendData(observations, gestationalAgeWeeks ?? undefined);
           return McpUtilities.createJsonResponse(result);
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          return McpUtilities.createTextResponse(
-            `Error retrieving lab trend data: ${message}`,
-            { isError: true },
+          // Graceful degradation: any FHIR-side failure (auth expiry,
+          // network hiccup, resource missing, malformed search
+          // parameters) is returned as a soft "no data on this axis"
+          // response with an explanatory note instead of an isError:
+          // true payload. Rationale: an isError response on a data tool
+          // surfaces a red "Error / The tool X returned an error" banner
+          // in Prompt Opinion that spooks the clinician even though the
+          // agent almost always recovers on the next tool call. The
+          // agent still receives the diagnostic message via the note
+          // field and can decide whether to retry or skip this axis.
+          const message =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[InterpretLabTrends] soft-degraded due to error: ${message}`,
           );
+          return McpUtilities.createJsonResponse({
+            patientId,
+            trends: [],
+            note: `Lab trend data could not be retrieved for this patient (${message}). Skip this axis and continue the assessment with the data you already have.`,
+          });
         }
       },
     );

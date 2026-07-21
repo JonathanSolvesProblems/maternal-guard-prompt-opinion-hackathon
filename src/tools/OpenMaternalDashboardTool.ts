@@ -397,9 +397,10 @@ class OpenMaternalDashboardTool implements IMcpTool {
                       refreshDashboard,
                     ],
                     onError: showToast({
-                      message: "Approve failed",
-                      description: "See server logs.",
-                      variant: "error",
+                      message: "Already actioned",
+                      description:
+                        "This task has already been resolved. Check Recently actioned below to see its current status.",
+                      variant: "warning",
                     }),
                   }),
                 }),
@@ -411,14 +412,16 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     onSuccess: [
                       showToast({
                         message: "Rejected",
-                        description: "Task rejected with default audit reason. See it under Recently actioned in the refreshed dashboard below.",
+                        description:
+                          "Task rejected with default audit reason. See it under Recently actioned in the refreshed dashboard below.",
                       }),
                       refreshDashboard,
                     ],
                     onError: showToast({
-                      message: "Reject failed",
-                      description: "See server logs.",
-                      variant: "error",
+                      message: "Already actioned",
+                      description:
+                        "This task has already been resolved. Check Recently actioned below to see its current status.",
+                      variant: "warning",
                     }),
                   }),
                 }),
@@ -480,9 +483,10 @@ class OpenMaternalDashboardTool implements IMcpTool {
                             refreshFlagDashboard,
                           ],
                           onError: showToast({
-                            message: "Activate failed",
-                            description: "See server logs.",
-                            variant: "error",
+                            message: "Already actioned",
+                            description:
+                              "This flag has already been resolved. Check Recently actioned below to see its current status.",
+                            variant: "warning",
                           }),
                         }),
                       }),
@@ -494,14 +498,16 @@ class OpenMaternalDashboardTool implements IMcpTool {
                           onSuccess: [
                             showToast({
                               message: "Dismissed",
-                              description: "Flag dismissed with default audit reason. See it under Recently actioned in the refreshed dashboard below.",
+                              description:
+                                "Flag dismissed with default audit reason. See it under Recently actioned in the refreshed dashboard below.",
                             }),
                             refreshFlagDashboard,
                           ],
                           onError: showToast({
-                            message: "Dismiss failed",
-                            description: "See server logs.",
-                            variant: "error",
+                            message: "Already actioned",
+                            description:
+                              "This flag has already been resolved. Check Recently actioned below to see its current status.",
+                            variant: "warning",
                           }),
                         }),
                       }),

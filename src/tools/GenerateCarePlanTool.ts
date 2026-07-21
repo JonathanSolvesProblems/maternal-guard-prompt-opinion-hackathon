@@ -72,11 +72,18 @@ class GenerateCarePlanTool implements IMcpTool {
           );
           return McpUtilities.createJsonResponse(result);
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          return McpUtilities.createTextResponse(
-            `Error retrieving care plan data: ${message}`,
-            { isError: true },
+          // Graceful degradation on FHIR-side failures. Soft JSON so no
+          // red banner surfaces in Prompt Opinion. See InterpretLabTrends
+          // catch block for the full rationale.
+          const message =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[GenerateCarePlan] soft-degraded due to error: ${message}`,
           );
+          return McpUtilities.createJsonResponse({
+            recommendations: [],
+            note: `Care plan data could not be retrieved (${message}). Skip this axis and continue the assessment.`,
+          });
         }
       },
     );

@@ -78,11 +78,21 @@ class AssessMaternalRiskTool implements IMcpTool {
           const result = this._buildRiskProfile(patient, conditions, observations, medications);
           return McpUtilities.createJsonResponse(result);
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          return McpUtilities.createTextResponse(
-            `Error retrieving maternal risk data: ${message}`,
-            { isError: true },
+          // Graceful degradation on FHIR-side failures (auth expiry,
+          // network hiccup, malformed resource). Return a soft JSON
+          // response so no red "Error / The tool X returned an error"
+          // banner surfaces in Prompt Opinion. The agent gets the
+          // diagnostic via the note field and can decide whether to
+          // retry or continue with reduced data.
+          const message =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[AssessMaternalRisk] soft-degraded due to error: ${message}`,
           );
+          return McpUtilities.createJsonResponse({
+            summary: null,
+            note: `Maternal risk data could not be retrieved (${message}). Continue the assessment with whatever context you already have.`,
+          });
         }
       },
     );

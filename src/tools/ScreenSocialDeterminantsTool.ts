@@ -54,11 +54,18 @@ class ScreenSocialDeterminantsTool implements IMcpTool {
           const result = this._buildSdohProfile(patient, socialHistory, coverage);
           return McpUtilities.createJsonResponse(result);
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          return McpUtilities.createTextResponse(
-            `Error retrieving SDOH data: ${message}`,
-            { isError: true },
+          // Graceful degradation on FHIR-side failures. Soft JSON so no
+          // red banner surfaces in Prompt Opinion. See InterpretLabTrends
+          // catch block for the full rationale.
+          const message =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[ScreenSocialDeterminants] soft-degraded due to error: ${message}`,
           );
+          return McpUtilities.createJsonResponse({
+            sdohProfile: null,
+            note: `SDOH data could not be retrieved (${message}). Skip this axis and continue the assessment.`,
+          });
         }
       },
     );
