@@ -127,9 +127,20 @@ app.post("/mcp", async (req, res) => {
     // Log presence of patient-id, not the value — the raw SHARP identifier
     // is PHI-equivalent and must never hit stdout (see no-PHI-in-logs
     // guarantee in README).
-    const hasPatientIdHeader = !!req.headers["x-patient-id"];
+    const rawPatientIdHeader = req.headers["x-patient-id"];
+    const hasPatientIdHeader = !!rawPatientIdHeader;
+    // Default: PRESENT/MISSING (PHI hygiene for shared deployments).
+    // With MATERNALGUARD_DEBUG_ARGS=true, log the actual UUID so an
+    // operator can copy it straight into the Postman collection's
+    // `patientId` variable without hunting through browser URLs.
+    const patientIdDisplay =
+      process.env["MATERNALGUARD_DEBUG_ARGS"] === "true"
+        ? String(rawPatientIdHeader ?? "MISSING")
+        : hasPatientIdHeader
+          ? "PRESENT"
+          : "MISSING";
     console.log(
-      `[MCP] method=${method} | x-patient-id=${hasPatientIdHeader ? "PRESENT" : "MISSING"} | x-fhir-server-url=${fhirUrl || "MISSING"}`,
+      `[MCP] method=${method} | x-patient-id=${patientIdDisplay} | x-fhir-server-url=${fhirUrl || "MISSING"}`,
     );
     const rawToken = req.headers["x-fhir-access-token"];
     const hasToken = !!rawToken;

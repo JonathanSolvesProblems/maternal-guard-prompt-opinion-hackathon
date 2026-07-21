@@ -241,6 +241,9 @@ class UpdateMaternalActionTool implements IMcpTool {
               input.taskId,
               updated,
             );
+            console.log(
+              `[UpdateMaternalAction] Task ${input.taskId} transitioned ${currentTaskStatus} -> ${updated.status} via action=${input.action}`,
+            );
 
             const effectiveTaskReason =
               input.action === "reject" ? rejectionReason : input.reason;
@@ -344,6 +347,9 @@ class UpdateMaternalActionTool implements IMcpTool {
               "Flag",
               input.flagId,
               updated,
+            );
+            console.log(
+              `[UpdateMaternalAction] Flag ${input.flagId} transitioned ${currentFlagStatus} -> ${updated.status} via action=${input.action}`,
             );
 
             const effectiveFlagReason =
