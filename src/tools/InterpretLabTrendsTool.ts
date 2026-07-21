@@ -131,7 +131,7 @@ class InterpretLabTrendsTool implements IMcpTool {
       "InterpretLabTrends",
       {
         description:
-          "Longitudinal lab/vital trends from FHIR with pregnancy reference ranges. Accepts labTypes as an array of strings; matching is case-insensitive and honours common aliases (Platelets/Platelet/PLT, Protein/Proteinuria/Urine Protein, BP/Blood Pressure, Fasting Glucose/FBS, Hgb/Hemoglobin, HCT/Hematocrit, AST/SGOT, ALT/SGPT, Uric Acid/Urate, Weight). Canonical types: blood-pressure, systolic-bp, diastolic-bp, glucose, fasting-glucose, hemoglobin, hematocrit, platelets, proteinuria, uric-acid, ast, alt, weight. Omit labTypes to fetch all. Returns JSON only. NOT for interactive dashboards / visual triage boards — for those, call OpenMaternalDashboard instead.",
+          "Longitudinal lab/vital trends from FHIR with pregnancy reference ranges. Accepts labTypes as an array of strings OR a single comma-separated string (both forms coerced server-side); matching is case-insensitive and honours common aliases (Platelets/Platelet/PLT, Protein/Proteinuria/Urine Protein, BP/Blood Pressure, Fasting Glucose/FBS, Hgb/Hemoglobin, HCT/Hematocrit, AST/SGOT, ALT/SGPT, Uric Acid/Urate, Weight). Canonical types: blood-pressure, systolic-bp, diastolic-bp, glucose, fasting-glucose, hemoglobin, hematocrit, platelets, proteinuria, uric-acid, ast, alt, weight. Omit labTypes to fetch all. gestationalAgeWeeks accepts a number or a numeric string. Returns JSON only. NOT for interactive dashboards / visual triage boards — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()
@@ -139,14 +139,18 @@ class InterpretLabTrendsTool implements IMcpTool {
             .describe("FHIR Patient ID. Optional — uses SHARP header if omitted.")
             .optional(),
           labTypes: z
-            .array(z.string())
+            .union([z.array(z.string()), z.string()])
             .nullable()
-            .describe("Lab/vital types to fetch. Omit for all.")
+            .describe(
+              "Lab/vital types to fetch. Prefer an array of strings, e.g. [\"Platelets\", \"Protein\"]. A single comma-separated string is also accepted (\"Platelets,Protein\"). Omit for all.",
+            )
             .optional(),
           gestationalAgeWeeks: z
-            .number()
+            .union([z.number(), z.string()])
             .nullable()
-            .describe("Gestational age in weeks.")
+            .describe(
+              "Gestational age in weeks. Prefer a number (e.g. 28). A numeric string (\"28\") is also accepted.",
+            )
             .optional(),
         },
       },
@@ -159,23 +163,47 @@ class InterpretLabTrendsTool implements IMcpTool {
             );
           }
 
+          // The Prompt Opinion agent occasionally serialises array/number
+          // arguments as strings ("Platelets,Protein" instead of
+          // ["Platelets","Protein"]; "28" instead of 28). Zod would
+          // previously -32602 the whole call at validation time, before
+          // this handler's soft-degrade catch could fire, and Prompt
+          // Opinion painted the row red. Schema now accepts both shapes;
+          // coerce here so the rest of the handler always sees a
+          // string[] and number|undefined.
+          const labTypesArray: string[] =
+            typeof labTypes === "string"
+              ? labTypes.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
+              : Array.isArray(labTypes)
+                ? labTypes
+                : [];
+
+          const gestationalAgeWeeksNum: number | undefined =
+            typeof gestationalAgeWeeks === "number"
+              ? gestationalAgeWeeks
+              : typeof gestationalAgeWeeks === "string" &&
+                  gestationalAgeWeeks.trim() !== "" &&
+                  !isNaN(Number(gestationalAgeWeeks))
+                ? Number(gestationalAgeWeeks)
+                : undefined;
+
           // Case-insensitive + alias-aware lookup. Previous strict
           // literal match caused the model to loop on "Platelets" vs
           // "platelets" and Prompt Opinion tinted the tool row red on
           // repeated no-match returns. Log the input and the resolved
           // codes so we can see if the model is guessing shapes we
           // still don't cover.
-          const resolvedCodes = labTypes?.length
+          const resolvedCodes = labTypesArray.length
             ? Array.from(
                 new Set(
-                  labTypes
+                  labTypesArray
                     .map((lt) => resolveLabTypeCode(lt))
                     .filter((c): c is string => c !== null),
                 ),
               )
             : Object.values(LOINC_CODES).map((v) => v.code);
-          if (labTypes?.length) {
-            const unresolved = labTypes.filter(
+          if (labTypesArray.length) {
+            const unresolved = labTypesArray.filter(
               (lt) => resolveLabTypeCode(lt) === null,
             );
             if (unresolved.length) {
@@ -222,14 +250,14 @@ class InterpretLabTrendsTool implements IMcpTool {
               status: "no-op",
               blocksNextStep: false,
               patientId,
-              gestationalAgeWeeks: gestationalAgeWeeks ?? null,
+              gestationalAgeWeeks: gestationalAgeWeeksNum ?? null,
               requestedLabTypes: codesToQuery,
               trends: [],
               note: "OK - No matching Observations on this patient for the requested lab types. This is NOT an error and NOT a blocker. Continue to the next tool call (e.g. ProposeMaternalAction) if you were on that path.",
             });
           }
 
-          const result = this._buildTrendData(observations, gestationalAgeWeeks ?? undefined);
+          const result = this._buildTrendData(observations, gestationalAgeWeeksNum);
           return McpUtilities.createJsonResponse(result);
         } catch (error) {
           // Graceful degradation: any FHIR-side failure (auth expiry,
