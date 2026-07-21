@@ -227,13 +227,75 @@ class ProposeMaternalActionTool implements IMcpTool {
             draftTask,
           );
 
+          // Server-side Flag de-duplication.
+          // When the agent calls ProposeMaternalAction multiple times in a
+          // single "draft the follow-up actions" turn (once per RED/YELLOW/
+          // GREEN item), each call may set createFlag=true with a similar
+          // finding (e.g. "Moderate pre-eclampsia evolving" appears on
+          // every pre-eclampsia-related draft). Without de-dup, the
+          // clinician's huddle card ends up with duplicate identical
+          // Flag rows that all need Activate/Dismiss. Prevent the
+          // duplicate write by scanning existing inactive
+          // MaternalGuard-tagged Flags for the same code.text (case-
+          // insensitive, trimmed) and skipping the create if a match
+          // exists. The tool response surfaces the skip via
+          // duplicateFlagSuppressed so the agent knows why the Flag was
+          // not created.
           let createdFlag: fhirR4.Flag | null = null;
+          let duplicateFlagSuppressed:
+            | { existingFlagId: string; finding: string }
+            | null = null;
           if (draftFlag) {
-            createdFlag = await FhirClientInstance.create<fhirR4.Flag>(
-              req,
-              "Flag",
-              draftFlag,
-            );
+            const findingNorm = (input.flagFinding ?? "").trim().toLowerCase();
+            let existingDup: fhirR4.Flag | undefined;
+            try {
+              const existingFlags = await FhirClientInstance.search(
+                req,
+                "Flag",
+                [
+                  `subject=Patient/${patientId}`,
+                  "_count=50",
+                ],
+              );
+              existingDup = (existingFlags?.entry ?? [])
+                .map((e) => e.resource as fhirR4.Flag)
+                .find((f) => {
+                  if (f.status !== "inactive") return false;
+                  const isMg = !!f.category?.[0]?.coding?.some(
+                    (c) =>
+                      c.system ===
+                      "http://maternalguard.local/flag-categories",
+                  );
+                  if (!isMg) return false;
+                  const text = (f.code?.text ?? "").trim().toLowerCase();
+                  return text === findingNorm;
+                });
+            } catch (dedupError) {
+              // If the search fails for any reason, fall back to the
+              // normal create path — better a duplicate Flag than a
+              // silent write skip.
+              console.error(
+                `[ProposeMaternalAction] flag-dedup search soft-failed: ${
+                  dedupError instanceof Error ? dedupError.message : dedupError
+                }`,
+              );
+            }
+
+            if (existingDup) {
+              duplicateFlagSuppressed = {
+                existingFlagId: existingDup.id ?? "",
+                finding: input.flagFinding ?? "",
+              };
+              console.log(
+                `[ProposeMaternalAction] suppressed duplicate Flag create; existing inactive flag=${existingDup.id} finding="${input.flagFinding}"`,
+              );
+            } else {
+              createdFlag = await FhirClientInstance.create<fhirR4.Flag>(
+                req,
+                "Flag",
+                draftFlag,
+              );
+            }
           }
 
           const taskProvenance = buildProvenance({
@@ -263,10 +325,13 @@ class ProposeMaternalActionTool implements IMcpTool {
             writeEnabled: true,
             createdTaskId: createdTask?.id ?? null,
             createdFlagId: createdFlag?.id ?? null,
+            duplicateFlagSuppressed,
             taskStatus: "requested (draft — awaiting clinician sign-off)",
             flagStatus: createdFlag
               ? "inactive (draft — awaiting clinician activation)"
-              : null,
+              : duplicateFlagSuppressed
+                ? `skipped (duplicate of existing inactive Flag ${duplicateFlagSuppressed.existingFlagId})`
+                : null,
             editableCoordinationFields: [
               "ownerDisplay",
               "dueDate",

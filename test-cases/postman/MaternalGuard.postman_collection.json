@@ -1,0 +1,393 @@
+{
+  "info": {
+    "name": "MaternalGuard FHIR Validation",
+    "description": "Read-only Postman collection for validating MaternalGuard's write-back path against the Prompt Opinion FHIR store.\n\n**What this collection is for.** After you click Approve / Reject / Activate / Dismiss in the morning-huddle dashboard, MaternalGuard writes back to the workspace FHIR store: Task.status changes, Flag.status changes, and every write emits a paired FHIR Provenance resource with the HL7 AI Transparency on FHIR AI-Provenance profile and an ONC HTI-1 45 CFR 170.315(b)(11)(iv)(A) Evidence-Based DSI source-attribute payload. This collection lets you fetch those resources by ID and inspect the wire shape without leaving Postman.\n\n**Setup (60 seconds).**\n\n1. Import this file into Postman: File > Import > drop this .json in.\n2. Click the collection (root), then the Variables tab.\n3. Paste your **bearerToken**. Fastest way to get it: open Prompt Opinion in your browser, open DevTools > Network, click any tool call, find the outbound request to your MaternalGuard server (POST /mcp), copy the value of the `X-FHIR-Access-Token` request header. That IS the bearer token for the workspace FHIR API. It rotates on session refresh — grab a fresh one whenever the collection returns 401.\n4. **workspaceId** and **patientId** are pre-filled for Jonathan's local Maria Santos setup. Change them if you're on a different workspace or patient.\n5. **taskId** and **flagId** are blank on purpose — fill them in when you want to inspect a specific resource. Server logs print the IDs on each ProposeMaternalAction / UpdateMaternalAction call in the form `[MCP] tool=... argKeys=[action,taskId]` — copy from there.\n\n**What to look for on a successful validation.**\n\n- `GET Patient/{{patientId}}` — 200 OK with `resourceType: Patient`. Confirms auth + patient exists.\n- `GET Task?patient={{patientId}}&status=accepted` — bundle contains any task you just Approved. `Task.status === \"accepted\"` proves the FHIR write persisted.\n- `GET Task/{{taskId}}` — inspect a specific task. `Task.reasonCode.coding` should include the NCQA HEDIS PPC identifier (system http://ncqa.org/hedis/identifiers, code PPC) plus a CPT Category II 0500F/0503F entry. `Task.basedOn[0].reference` should point at the NCQA canonical Measure URL.\n- `GET Provenance?target=Task/{{taskId}}` — the trust-story b-roll. Look for:\n  - `meta.profile[0]` = `http://hl7.org/fhir/uv/aitransparency/StructureDefinition/AI-Provenance`\n  - `meta.security[0]` = `AIAST` (Artificial Intelligence Asserted)\n  - `contained[0]` = the AI-Device with aiKind = rule-based\n  - `contained[1]` = the AI-ModelCard DocumentReference with a CHAI Applied Model Card content slice\n  - `extension[0].url` = `https://maternalguard.local/extensions/dsi-transparency/summary` with 13 (b)(11)(iv)(A) source-attribute sub-extensions filled in\n  That is the ONC HTI-1 payload MaternalGuard emits on every write.\n\n**Auth is Bearer** at the collection level — every request inherits it. The local health-check request opts out because localhost:5000 doesn't need auth.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{bearerToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://app.promptopinion.ai",
+      "type": "string",
+      "description": "Prompt Opinion host."
+    },
+    {
+      "key": "workspaceId",
+      "value": "019d16cb-4c55-72d1-9bb7-c5ad7596d094",
+      "type": "string",
+      "description": "Prompt Opinion workspace UUID. Change to your workspace if not Jonathan's local."
+    },
+    {
+      "key": "patientId",
+      "value": "bd767cbf-dbca-408f-8566-f176cd62f25a",
+      "type": "string",
+      "description": "Maria Santos on Jonathan's local workspace. Replace with any patient's FHIR id."
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string",
+      "description": "A Task UUID to inspect. Fill in from server-log lines like `[MCP] tool=UpdateMaternalAction argKeys=[action,taskId]` after a button click."
+    },
+    {
+      "key": "flagId",
+      "value": "",
+      "type": "string",
+      "description": "A Flag UUID to inspect. Same source as taskId."
+    },
+    {
+      "key": "bearerToken",
+      "value": "PASTE_YOUR_BEARER_TOKEN_HERE",
+      "type": "string",
+      "description": "Copy from Prompt Opinion browser DevTools > Network > your MCP request > X-FHIR-Access-Token header. Rotates on session refresh."
+    },
+    {
+      "key": "localBaseUrl",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "MaternalGuard MCP server on your machine."
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Local MaternalGuard health",
+      "item": [
+        {
+          "name": "GET /health (local server sanity)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{localBaseUrl}}/health",
+              "host": ["{{localBaseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Sanity check the local MaternalGuard MCP server is up and reports the expected version + tool list. No auth needed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Patient (auth sanity check)",
+      "item": [
+        {
+          "name": "GET Patient/{{patientId}}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Patient/{{patientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Patient",
+                "{{patientId}}"
+              ]
+            },
+            "description": "Verifies bearer token is valid and the patient resolves. Expect resourceType=Patient. If 401, refresh the bearerToken variable."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Tasks",
+      "item": [
+        {
+          "name": "GET all Tasks for patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&_count=100",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Task"
+              ],
+              "query": [
+                { "key": "patient", "value": "{{patientId}}" },
+                { "key": "_count", "value": "100" }
+              ]
+            },
+            "description": "Bundle of every Task on the patient's chart. Filter for MaternalGuard drafts by checking Task.code.coding[0].system === 'http://maternalguard.local/task-codes'."
+          }
+        },
+        {
+          "name": "GET draft Tasks (status=requested)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&status=requested",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Task"
+              ],
+              "query": [
+                { "key": "patient", "value": "{{patientId}}" },
+                { "key": "status", "value": "requested" }
+              ]
+            },
+            "description": "Everything currently in the dashboard's Draft tasks section. Bundle.total should match the (N) on the huddle card."
+          }
+        },
+        {
+          "name": "GET accepted Tasks (status=accepted)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&status=accepted",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Task"
+              ],
+              "query": [
+                { "key": "patient", "value": "{{patientId}}" },
+                { "key": "status", "value": "accepted" }
+              ]
+            },
+            "description": "Every task the clinician has Approved. Should include whatever you just clicked Approve on. Proves the FHIR write persisted end-to-end."
+          }
+        },
+        {
+          "name": "GET rejected Tasks (status=rejected)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&status=rejected",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Task"
+              ],
+              "query": [
+                { "key": "patient", "value": "{{patientId}}" },
+                { "key": "status", "value": "rejected" }
+              ]
+            },
+            "description": "Every task the clinician has Rejected. Each should have Task.statusReason.text = 'Rejected by clinician during huddle review' when the reject fired without a caller-supplied reason (server default)."
+          }
+        },
+        {
+          "name": "GET Task by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Task",
+                "{{taskId}}"
+              ]
+            },
+            "description": "Inspect a specific Task. Look for:\n- Task.status\n- Task.priority (urgent for RED, asap for YELLOW, routine for GREEN)\n- Task.description (recommendation + rationale + guideline reference)\n- Task.reasonCode.coding (NCQA HEDIS PPC identifier + CPT-II 0500F/0503F)\n- Task.basedOn[0].reference (NCQA Measure canonical)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Flags",
+      "item": [
+        {
+          "name": "GET all Flags for patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Flag?subject=Patient/{{patientId}}&_count=100",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Flag"
+              ],
+              "query": [
+                { "key": "subject", "value": "Patient/{{patientId}}" },
+                { "key": "_count", "value": "100" }
+              ]
+            },
+            "description": "Bundle of every Flag on the patient's chart. MaternalGuard-authored flags have Flag.category[0].coding[0].system === 'http://maternalguard.local/flag-categories'."
+          }
+        },
+        {
+          "name": "GET draft Flags (status=inactive)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Flag?subject=Patient/{{patientId}}&status=inactive",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Flag"
+              ],
+              "query": [
+                { "key": "subject", "value": "Patient/{{patientId}}" },
+                { "key": "status", "value": "inactive" }
+              ]
+            },
+            "description": "Everything in the dashboard's Draft flags section."
+          }
+        },
+        {
+          "name": "GET active Flags (status=active)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Flag?subject=Patient/{{patientId}}&status=active",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Flag"
+              ],
+              "query": [
+                { "key": "subject", "value": "Patient/{{patientId}}" },
+                { "key": "status", "value": "active" }
+              ]
+            },
+            "description": "Every Flag the clinician has clicked Activate on. Each should have Flag.extension containing the maternalguard.local/extensions/review-status extension flipped to 'clinician-activated'."
+          }
+        },
+        {
+          "name": "GET Flag by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Flag/{{flagId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Flag",
+                "{{flagId}}"
+              ]
+            },
+            "description": "Inspect a specific Flag."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Provenance (AI Transparency / (b)(11) DSI b-roll)",
+      "item": [
+        {
+          "name": "GET Provenance targeting a Task",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Provenance?target=Task/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Provenance"
+              ],
+              "query": [
+                { "key": "target", "value": "Task/{{taskId}}" }
+              ]
+            },
+            "description": "**The trust-story b-roll.** Any single Provenance in the bundle should carry:\n\n- meta.profile[0] = http://hl7.org/fhir/uv/aitransparency/StructureDefinition/AI-Provenance\n- meta.security[0].code = AIAST (Artificial Intelligence Asserted)\n- agent[0].who.reference = #maternalguard-dsi-device (contained)\n- contained[0] = the AI-Device with aiKind = rule-based and modelCardDescription\n- contained[1] = an AI-ModelCard DocumentReference with a CHAI Applied Model Card content slice (application/json + text/markdown attachments)\n- extension[0].url = https://maternalguard.local/extensions/dsi-transparency/summary with 13 (b)(11)(iv)(A) Evidence-Based source-attribute sub-extensions filled in (interventionName, purpose, intendedPopulation, cautionedOutOfScopeUse, algorithmMethodology, underlyingKnowledgeSource, developer, fundingSource, releaseDate, version, biasAssessment, warningsLimitations, regulatoryFramework)"
+          }
+        },
+        {
+          "name": "GET Provenance targeting a Flag",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Provenance?target=Flag/{{flagId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Provenance"
+              ],
+              "query": [
+                { "key": "target", "value": "Flag/{{flagId}}" }
+              ]
+            },
+            "description": "Same AI-Transparency + (b)(11) shape as the Task Provenance, but targeting a Flag. Every Flag creation emits one; every UpdateMaternalAction on a Flag (activate/dismiss) emits another."
+          }
+        },
+        {
+          "name": "GET all Provenance for patient (via _include on Task)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&_revinclude=Provenance:target&_count=100",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "fhir",
+                "Task"
+              ],
+              "query": [
+                { "key": "patient", "value": "{{patientId}}" },
+                { "key": "_revinclude", "value": "Provenance:target" },
+                { "key": "_count", "value": "100" }
+              ]
+            },
+            "description": "Returns every Task for the patient PLUS every Provenance that targets one of those Tasks in a single bundle. Useful for one-shot audit trail verification."
+          }
+        }
+      ]
+    }
+  ]
+}
