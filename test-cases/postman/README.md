@@ -4,16 +4,20 @@ A read-only Postman collection for validating that MaternalGuard's write-back pa
 
 ## Setup (60 seconds)
 
-1. Open Postman → **File > Import** → drop [MaternalGuard.postman_collection.json](MaternalGuard.postman_collection.json) in.
-2. Click the imported collection root → **Variables** tab.
-3. Fill in `bearerToken`. Fastest way to get it:
-   - Open Prompt Opinion in your browser.
-   - DevTools → **Network** tab → click any tool-call row.
-   - Find the outbound POST to your MaternalGuard server (the URL contains `/mcp`).
-   - Copy the value of the `X-FHIR-Access-Token` request header. That IS the workspace FHIR bearer.
+1. Open Postman → **File > Import** → drop [MaternalGuard.postman_collection.json](MaternalGuard.postman_collection.json) in. If re-importing, remove the old copy first — Postman doesn't overwrite.
+2. Click the imported collection root (**MaternalGuard FHIR Validation**) → **Variables** tab.
+3. Fill in `bearerToken`. This is the ONE thing that breaks every first-time run:
+   - In your browser, open Prompt Opinion.
+   - Press **F12** → **Network** tab → click any tool-call row (the outbound POST to your MaternalGuard server; the URL contains `/mcp`).
+   - Scroll the right pane to **Request Headers** → find `X-FHIR-Access-Token` → click the value → **Ctrl+C**.
+   - Back in Postman → `bearerToken` row → paste into the **CURRENT VALUE** cell (right side, not Initial Value).
+   - **Ctrl+S** to save. Missing this step is why the request 401s.
+   - The token is a JWT of ~1300+ characters starting with `eyJ`. A short string is the wrong header (probably `X-API-Key`).
    - Token rotates on session refresh — grab a new one when you see 401.
 4. Confirm `workspaceId` and `patientId` match your environment. Defaults are Jonathan's Maria Santos setup.
 5. Leave `taskId` / `flagId` empty for now — you'll fill them when you want to inspect a specific resource.
+
+The collection ships with a pre-request script that hard-stops any request with a clear message if `bearerToken`, `taskId`, or `flagId` isn't filled in when required. If you see a Postman error like *"bearerToken not set. Fix: ..."*, follow the instructions in the message.
 
 ## Common workflows
 

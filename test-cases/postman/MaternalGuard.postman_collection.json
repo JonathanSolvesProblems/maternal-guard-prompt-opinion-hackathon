@@ -47,7 +47,7 @@
     },
     {
       "key": "bearerToken",
-      "value": "PASTE_YOUR_BEARER_TOKEN_HERE",
+      "value": "",
       "type": "string",
       "description": "Copy from Prompt Opinion browser DevTools > Network > your MCP request > X-FHIR-Access-Token header. Rotates on session refresh."
     },
@@ -72,8 +72,12 @@
             "header": [],
             "url": {
               "raw": "{{localBaseUrl}}/health",
-              "host": ["{{localBaseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{localBaseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             },
             "description": "Sanity check the local MaternalGuard MCP server is up and reports the expected version + tool list. No auth needed."
           }
@@ -90,7 +94,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Patient/{{patientId}}",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -115,7 +121,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&_count=100",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -124,8 +132,14 @@
                 "Task"
               ],
               "query": [
-                { "key": "patient", "value": "{{patientId}}" },
-                { "key": "_count", "value": "100" }
+                {
+                  "key": "patient",
+                  "value": "{{patientId}}"
+                },
+                {
+                  "key": "_count",
+                  "value": "100"
+                }
               ]
             },
             "description": "Bundle of every Task on the patient's chart. Filter for MaternalGuard drafts by checking Task.code.coding[0].system === 'http://maternalguard.local/task-codes'."
@@ -138,7 +152,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&status=requested",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -147,8 +163,14 @@
                 "Task"
               ],
               "query": [
-                { "key": "patient", "value": "{{patientId}}" },
-                { "key": "status", "value": "requested" }
+                {
+                  "key": "patient",
+                  "value": "{{patientId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "requested"
+                }
               ]
             },
             "description": "Everything currently in the dashboard's Draft tasks section. Bundle.total should match the (N) on the huddle card."
@@ -161,7 +183,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&status=accepted",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -170,8 +194,14 @@
                 "Task"
               ],
               "query": [
-                { "key": "patient", "value": "{{patientId}}" },
-                { "key": "status", "value": "accepted" }
+                {
+                  "key": "patient",
+                  "value": "{{patientId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "accepted"
+                }
               ]
             },
             "description": "Every task the clinician has Approved. Should include whatever you just clicked Approve on. Proves the FHIR write persisted end-to-end."
@@ -184,7 +214,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&status=rejected",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -193,8 +225,14 @@
                 "Task"
               ],
               "query": [
-                { "key": "patient", "value": "{{patientId}}" },
-                { "key": "status", "value": "rejected" }
+                {
+                  "key": "patient",
+                  "value": "{{patientId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "rejected"
+                }
               ]
             },
             "description": "Every task the clinician has Rejected. Each should have Task.statusReason.text = 'Rejected by clinician during huddle review' when the reject fired without a caller-supplied reason (server default)."
@@ -207,7 +245,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task/{{taskId}}",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -232,7 +272,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Flag?subject=Patient/{{patientId}}&_count=100",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -241,8 +283,14 @@
                 "Flag"
               ],
               "query": [
-                { "key": "subject", "value": "Patient/{{patientId}}" },
-                { "key": "_count", "value": "100" }
+                {
+                  "key": "subject",
+                  "value": "Patient/{{patientId}}"
+                },
+                {
+                  "key": "_count",
+                  "value": "100"
+                }
               ]
             },
             "description": "Bundle of every Flag on the patient's chart. MaternalGuard-authored flags have Flag.category[0].coding[0].system === 'http://maternalguard.local/flag-categories'."
@@ -255,7 +303,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Flag?subject=Patient/{{patientId}}&status=inactive",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -264,8 +314,14 @@
                 "Flag"
               ],
               "query": [
-                { "key": "subject", "value": "Patient/{{patientId}}" },
-                { "key": "status", "value": "inactive" }
+                {
+                  "key": "subject",
+                  "value": "Patient/{{patientId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "inactive"
+                }
               ]
             },
             "description": "Everything in the dashboard's Draft flags section."
@@ -278,7 +334,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Flag?subject=Patient/{{patientId}}&status=active",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -287,8 +345,14 @@
                 "Flag"
               ],
               "query": [
-                { "key": "subject", "value": "Patient/{{patientId}}" },
-                { "key": "status", "value": "active" }
+                {
+                  "key": "subject",
+                  "value": "Patient/{{patientId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
               ]
             },
             "description": "Every Flag the clinician has clicked Activate on. Each should have Flag.extension containing the maternalguard.local/extensions/review-status extension flipped to 'clinician-activated'."
@@ -301,7 +365,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Flag/{{flagId}}",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -326,7 +392,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Provenance?target=Task/{{taskId}}",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -335,7 +403,10 @@
                 "Provenance"
               ],
               "query": [
-                { "key": "target", "value": "Task/{{taskId}}" }
+                {
+                  "key": "target",
+                  "value": "Task/{{taskId}}"
+                }
               ]
             },
             "description": "**The trust-story b-roll.** Any single Provenance in the bundle should carry:\n\n- meta.profile[0] = http://hl7.org/fhir/uv/aitransparency/StructureDefinition/AI-Provenance\n- meta.security[0].code = AIAST (Artificial Intelligence Asserted)\n- agent[0].who.reference = #maternalguard-dsi-device (contained)\n- contained[0] = the AI-Device with aiKind = rule-based and modelCardDescription\n- contained[1] = an AI-ModelCard DocumentReference with a CHAI Applied Model Card content slice (application/json + text/markdown attachments)\n- extension[0].url = https://maternalguard.local/extensions/dsi-transparency/summary with 13 (b)(11)(iv)(A) Evidence-Based source-attribute sub-extensions filled in (interventionName, purpose, intendedPopulation, cautionedOutOfScopeUse, algorithmMethodology, underlyingKnowledgeSource, developer, fundingSource, releaseDate, version, biasAssessment, warningsLimitations, regulatoryFramework)"
@@ -348,7 +419,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Provenance?target=Flag/{{flagId}}",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -357,7 +430,10 @@
                 "Provenance"
               ],
               "query": [
-                { "key": "target", "value": "Flag/{{flagId}}" }
+                {
+                  "key": "target",
+                  "value": "Flag/{{flagId}}"
+                }
               ]
             },
             "description": "Same AI-Transparency + (b)(11) shape as the Task Provenance, but targeting a Flag. Every Flag creation emits one; every UpdateMaternalAction on a Flag (activate/dismiss) emits another."
@@ -370,7 +446,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/fhir/Task?patient={{patientId}}&_revinclude=Provenance:target&_count=100",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "workspaces",
@@ -379,15 +457,73 @@
                 "Task"
               ],
               "query": [
-                { "key": "patient", "value": "{{patientId}}" },
-                { "key": "_revinclude", "value": "Provenance:target" },
-                { "key": "_count", "value": "100" }
+                {
+                  "key": "patient",
+                  "value": "{{patientId}}"
+                },
+                {
+                  "key": "_revinclude",
+                  "value": "Provenance:target"
+                },
+                {
+                  "key": "_count",
+                  "value": "100"
+                }
               ]
             },
             "description": "Returns every Task for the patient PLUS every Provenance that targets one of those Tasks in a single bundle. Useful for one-shot audit trail verification."
           }
         }
       ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// MaternalGuard collection guard — fail fast on the two mistakes",
+          "// that produce a confusing 401 or 404 instead of a real answer.",
+          "const token = pm.collectionVariables.get(\"bearerToken\");",
+          "const url   = pm.request.url.toString();",
+          "",
+          "// Skip the guard for the local /health request (folder 0). It does not",
+          "// hit Prompt Opinion and does not need the bearer.",
+          "const isLocalHealth = url.indexOf(\"{{localBaseUrl}}\") !== -1 || url.indexOf(\"localhost\") !== -1;",
+          "",
+          "if (!isLocalHealth) {",
+          "  if (!token || token === \"PASTE_YOUR_BEARER_TOKEN_HERE\" || token.trim() === \"\") {",
+          "    throw new Error(",
+          "      \"bearerToken not set. Fix: click the collection root (MaternalGuard FHIR Validation) > Variables tab > paste the value of X-FHIR-Access-Token from Prompt Opinion browser DevTools > Network > any MCP call > Request Headers, into the CURRENT VALUE column, then Ctrl+S.\"",
+          "    );",
+          "  }",
+          "  if (token.length < 200) {",
+          "    throw new Error(",
+          "      \"bearerToken looks too short (\" + token.length + \" chars). The real X-FHIR-Access-Token is a JWT of ~1300+ chars starting with eyJ. Did you copy the X-API-Key by mistake?\"",
+          "    );",
+          "  }",
+          "}",
+          "",
+          "// Task-by-ID / Flag-by-ID / Provenance filters need a real UUID.",
+          "if (url.indexOf(\"{{taskId}}\") !== -1 || url.indexOf(\"/Task/\") !== -1 && url.match(/Task/([a-f0-9-]{36})/)) {",
+          "  const taskId = pm.collectionVariables.get(\"taskId\");",
+          "  if (url.indexOf(\"{{taskId}}\") !== -1 && (!taskId || taskId.trim() === \"\")) {",
+          "    throw new Error(",
+          "      \"taskId not set. Fix: click Approve/Reject on a task in the dashboard, copy the UUID from the server terminal line \"[ProposeMaternalAction] created Task id=<uuid>\" or \"[MCP] tool=UpdateMaternalAction ids=[taskId=<uuid>]\", paste into the collection's taskId variable, Ctrl+S.\"",
+          "    );",
+          "  }",
+          "}",
+          "if (url.indexOf(\"{{flagId}}\") !== -1) {",
+          "  const flagId = pm.collectionVariables.get(\"flagId\");",
+          "  if (!flagId || flagId.trim() === \"\") {",
+          "    throw new Error(",
+          "      \"flagId not set. Same fix as taskId: grab a Flag UUID from the server terminal (created Flag id=<uuid> or ids=[flagId=<uuid>]), paste into the collection's flagId variable, Ctrl+S.\"",
+          "    );",
+          "  }",
+          "}"
+        ]
+      }
     }
   ]
 }
