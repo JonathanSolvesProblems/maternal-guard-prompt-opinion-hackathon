@@ -1,0 +1,38 @@
+# Lives at ~/experimental-projects/maternalguard/docker-compose.yml on the OVH box.
+#
+# MaternalGuard is a Node/Express MCP server that also serves the reviewer
+# reproduction guide and the CHAI Applied Model Card at the same host, so it
+# joins the shared `web` network and is routed by the box Traefik (entrypoint
+# websecure, certresolver le, HTTP-01), same pattern as overtone.
+#
+# Resource caps: this box runs production apps. MaternalGuard is stateless and
+# lightweight (Node + Express, no image processing, no DB). Small caps protect
+# the shared box; healthy footprint at rest is ~150-300 MB.
+
+services:
+  app:
+    build:
+      context: ./app
+    container_name: maternalguard
+    env_file: .env
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    networks:
+      - web
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: web
+      traefik.http.routers.maternalguard.rule: Host(`maternalguard.jonathanandrei.com`)
+      traefik.http.routers.maternalguard.entrypoints: websecure
+      traefik.http.routers.maternalguard.tls.certresolver: le
+      traefik.http.services.maternalguard.loadbalancer.server.port: "5000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  web:
+    external: true
