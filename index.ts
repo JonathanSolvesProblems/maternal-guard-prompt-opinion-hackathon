@@ -16,6 +16,14 @@ const pkg = JSON.parse(
 ) as { version: string };
 const SERVER_VERSION = pkg.version;
 
+// Deduped set of FHIR bearer JWTs seen during this server lifetime.
+// Populated under MATERNALGUARD_DEBUG_ARGS so an operator can grep the
+// token out of the terminal for Postman. Deduped so a session that
+// fires 4+ requests (initialize / notifications / tools/list / tool
+// calls) only prints the same 1330-char JWT once. Reset per server
+// restart, so restarts always re-print the current token.
+const SEEN_BEARERS = new Set<string>();
+
 // The prefab-ui renderer HTML we serve at ui://prefab/renderer.html. We
 // keep BOTH shapes on hand and pick one at boot via env var, so we can
 // A/B without re-downloading:
@@ -145,6 +153,26 @@ app.post("/mcp", async (req, res) => {
     const rawToken = req.headers["x-fhir-access-token"];
     const hasToken = !!rawToken;
     const tokenLen = rawToken ? String(rawToken).length : 0;
+
+    // Print the FHIR bearer once per unique value under DEBUG_ARGS.
+    // Fires on ANY request type (initialize / notifications / tools/list
+    // / tools/call) so an operator does not need to trigger an actual
+    // tool call to see the token — a plain "hi" message that only hits
+    // initialize + tools/list is enough. Dedupe by value so a session
+    // that fires 4 requests does not spam the terminal with 4 copies of
+    // the same 1330-char JWT; when the session refreshes and mints a
+    // new token, the new one prints once.
+    if (
+      process.env["MATERNALGUARD_DEBUG_ARGS"] === "true" &&
+      hasToken &&
+      !SEEN_BEARERS.has(String(rawToken))
+    ) {
+      SEEN_BEARERS.add(String(rawToken));
+      console.log(
+        `[MCP]   bearer(copy this into Postman bearerToken var)=${rawToken}`,
+      );
+    }
+
     if (req.body?.params?.name) {
       // Log only the KEYS of the arguments; values may include PHI (patient
       // IDs, clinician notes, free-text rationale). Enable value logging by
@@ -163,20 +191,9 @@ app.post("/mcp", async (req, res) => {
       if (typeof args.flagId === "string" && args.flagId) idBits.push(`flagId=${args.flagId}`);
       const idsPart = idBits.length ? ` ids=[${idBits.join(",")}]` : "";
       if (process.env["MATERNALGUARD_DEBUG_ARGS"] === "true") {
+        // Bearer already printed once at the top-level [MCP] method= line
+        // via the SEEN_BEARERS dedupe — no need to repeat it here.
         console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(args)} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
-        // Print the actual bearer so the operator can grep it out of
-        // the terminal into the Postman collection variable. Only fires
-        // when DEBUG_ARGS is on. Prompt Opinion invokes MaternalGuard
-        // server-to-server, so the X-FHIR-Access-Token never shows up in
-        // the browser DevTools Network panel — logging it here is the
-        // ONLY practical way for a local operator to see it.
-        // Never enable this on Railway/production; the bearer is
-        // workspace-wide FHIR auth for the length of one Prompt Opinion
-        // session refresh (usually ~1 hour) and stdout collection there
-        // is a real leak surface.
-        if (hasToken) {
-          console.log(`[MCP]   bearer(copy this into Postman bearerToken var)=${rawToken}`);
-        }
       } else {
         console.log(`[MCP]   tool=${req.body.params.name} argKeys=[${argKeys.join(",")}]${idsPart} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
       }
