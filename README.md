@@ -4,15 +4,43 @@
 
 # MaternalGuard
 
-An **independent MCP server alongside the EHR**. SMART on FHIR + MCP + governed write-back. Built for the [Agents Assemble hackathon](https://agents-assemble.devpost.com/) on the [Prompt Opinion](https://app.promptopinion.ai) healthcare AI platform.
+**1 in 25 pregnancies develops severe preeclampsia. MaternalGuard's dashboard turns 5 tool JSON returns into a single one-click huddle — from tool call to accepted FHIR Task in ~2 seconds, with an ONC HTI-1 (b)(11) Decision Support Intervention Provenance every clinician can audit.**
 
-**Assembled with Confidence.** MaternalGuard is a maternal-health copilot built to answer the three barriers Prompt Opinion names as the reason healthcare AI has not shipped at the bedside: **fragmentation**, **trust**, and **assembly cost**.
+Honorable Mention (top 10 of 300+), [Agents Assemble — The Healthcare AI Endgame](https://agents-assemble.devpost.com/), May 2026. Built on [Prompt Opinion](https://app.promptopinion.ai).
 
-**Fragmentation (from 1000 clicks to a copilot).** One in-chat triage view assembles Patient, Condition, Observation, MedicationRequest, Coverage, Task, and Flag through 10 composable MCP tools, so the LLM asks precisely which labs matter (AST, platelets, blood pressure, urine protein) instead of dumping a static RAG blob. The Morning Huddle dashboard replaces the multi-tab chart hunt across a whole cohort with one card per patient: a RED / YELLOW / GREEN urgency band, the contributing HELLP-evolution signals, and one-click Approve / Reject buttons on the draft actions the specialist agent has queued.
+- **Live:** https://maternalguard.jonathanandrei.com/mcp
+- **Reviewer reproduction guide:** https://maternalguard.jonathanandrei.com/guide
+- **CHAI Applied Model Card:** [JSON](https://maternalguard.jonathanandrei.com/dsi/model-card.json) · [Markdown](https://maternalguard.jonathanandrei.com/dsi/model-card.md)
 
-**Trust (no LLM output lands on a chart).** Every write is a draft. Task.status stays `requested` and Flag.status stays `inactive` until a clinician clicks Approve or Activate. Every state transition writes a FHIR Provenance record, and every Provenance now carries the HL7 AI Transparency on FHIR AI-Provenance profile plus an ONC HTI-1 45 CFR 170.315(b)(11)(iv)(A) Evidence-Based DSI source-attribute payload (the same CHAI Applied Model Card shape Darena Solutions/MeldRx ships to certified customers), so a downstream reviewer can trace exactly which rule fired, on what evidence, at what DSI version. Approve, Reject, Save edits, Activate, and Dismiss buttons in the chat route back into this same MCP server.
+---
 
-**Assembly cost (one server, ten tools, real standards).** One TypeScript MCP server exposes 10 tools that already speak SMART-on-FHIR, USCDI v3 (Assessment and Plan of Treatment via Task, Care Team Members via Task.owner, Health Concerns via Flag, Provenance), HEDIS Prenatal & Postpartum Care (NCQA PPC, NQF #1517, with CPT Category II 0500F / 0503F auto-tagged on Task.reasonCode), and the CHAI Applied Model Card. Deploy the Prompt Opinion marketplace listing, point it at any FHIR R4 store, done.
+### For Prompt Opinion builders (Pawan Jindal's *1000 Clicks to Copilots* thesis)
+
+- **Buttons-only clinician dashboard.** Approve / Reject / Activate / Dismiss on every draft Task and Flag. Zero typing. Server supplies the audit reason so the trail stays populated.
+- **Optimistic UI:** instant "Approving: &lt;task&gt;" toast on click; ~1-2s FHIR round-trip; green "✓ Approved" banner at the top of the auto-refreshed huddle. No scrolling to confirm.
+- **Multi-tool MCP with A2A:** `AssessMaternalRisk`, `InterpretLabTrends`, `ScreenSocialDeterminants`, `GenerateCarePlan`, `PredictNeonatalImpact`, `ProposeMaternalAction`, `UpdateMaternalAction`, `OpenMaternalDashboard`, `ListMaternalActions`, `MaternalPanelScan`. Every tool schema accepts stringified args (`z.union([native, string])` + server-side coercion) so upstream agent quirks never -32602 the call.
+- **SHARP-on-MCP + FHIR Context Extension:** consumes `X-FHIR-Server-URL`, `X-FHIR-Access-Token`, `X-Patient-ID` out of the box. No custom auth code; drops into any Prompt Opinion workspace with FHIR Context enabled.
+- **Soft-degradation contract:** any FHIR read failure returns `{status:"no-op", blocksNextStep:false}` — never a red banner in chat. The Priority-1 chart-writeback loop always completes.
+
+### For (b)(11)-certified stacks like Darena Health / MeldRx (Magnus Wieslander)
+
+- **Every governed write emits an HL7 AI Transparency on FHIR Provenance.** `meta.profile[0] = AI-Provenance`, `meta.security[0].code = AIAST`.
+- **Contained `AI-Device` (`aiKind = rule-based`) linked to a contained `AI-ModelCard` DocumentReference** pointing at a live, resolvable [CHAI Applied Model Card JSON](https://maternalguard.jonathanandrei.com/dsi/model-card.json). No 404 when a reviewer follows the (b)(11) source-attribute reference.
+- **All 13 [45 CFR 170.315(b)(11)(iv)(A)](https://www.federalregister.gov/documents/2024/01/09/2023-28857/health-data-technology-and-interoperability-certification-program-updates-algorithm-transparency-and) Evidence-Based source attributes carried inline** on every Provenance summary extension, for viewers that don't follow references.
+- **USCDI v3.1 alignment.** HEDIS Prenatal & Postpartum Care (NQF #1517) via CPT Category II 0500F/0503F auto-tagged on Task.reasonCode.
+- **Ongoing-maintenance surface exercised.** DSI version bumps land in `MATERNALGUARD_DSI_VERSION` + the JSON changeLog + the Markdown in one commit; this is what the (b)(11) "ongoing maintenance" language expects to see used.
+
+### Path to production
+
+Prompt Opinion's own tagline is *"Healthcare AI is stuck in pilots. That's not an agent problem. That's an assembly problem."* Three concrete next steps:
+
+1. **CDS Hooks bridge alongside MCP.** MaternalGuard's tools port to CDS Hooks in ~1 day of work; tool logic and Provenance shape stay identical. Ships against every SMART-on-FHIR EHR (MeldRx, Epic App Orchard, Cerner code sandbox).
+2. **Prospective sensitivity/specificity study** against an ACOG-benchmarked cohort of 200-500 real prenatal charts. Moves the 61-case corpus false-positive claim (< 1%) into a real ROC curve.
+3. **Design partnership with an OB residency or MFM service** for 8-12 weeks in real morning-huddle use. Turns the "1 in 25 severe preeclampsia" hook into a measured outcome.
+
+**Portability:** reads and writes standard FHIR R4 with US-Core-Patient profiles. Point `X-FHIR-Server-URL` at MeldRx / Epic App Orchard / a HAPI FHIR store — zero code change. DSI identifier and CHAI Model Card travel with the app.
+
+---
 
 **Why MCP over RAG.** RAG stuffs a static blob of "what the model might need" into a prompt. MCP lets the LLM ask precisely what it needs, when it needs it. For a maternal-health workflow that means today's AST vs. two weeks ago, this patient's specific urine protein history, and the current pregnancy Condition — not a corpus dump.
 

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MaternalGuard — Reviewer Reproduction Guide</title>
+<meta name="description" content="Try MaternalGuard in 60 seconds. A rule-based maternal-health MCP server with governed FHIR write-back and ONC HTI-1 (b)(11) Provenance.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🩺%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #0b1220;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #22d3ee;
+    --accent-hover: #67e8f9;
+    --success: #4ade80;
+    --warn: #fbbf24;
+    --pill: #0b1220;
+    --code: #22d3ee;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; min-height: 100vh; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  main { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; margin: 0 0 8px; color: #f8fafc; letter-spacing: -0.5px; }
+  h2 { font-size: 20px; margin: 44px 0 12px; color: #f8fafc; letter-spacing: -0.3px; }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #cbd5e1; }
+  .lede { color: var(--muted); font-size: 16px; margin: 0 0 8px; }
+  .headline {
+    background: linear-gradient(135deg, #0b1220 0%, #1e293b 100%);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0 32px;
+  }
+  .headline p { margin: 0; font-size: 17px; line-height: 1.5; color: #f1f5f9; }
+  .headline .num { color: var(--accent); font-weight: 700; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0 8px; }
+  .cta {
+    display: inline-block;
+    background: var(--accent);
+    color: #0f172a;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .cta:hover { background: var(--accent-hover); text-decoration: none; }
+  .cta.sec { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+  .cta.sec:hover { border-color: var(--accent); }
+  ul, ol { padding-left: 22px; }
+  li { margin: 6px 0; }
+  code {
+    background: var(--panel-2);
+    color: var(--code);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font: 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  pre {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #e2e8f0;
+  }
+  pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .card h3 { margin-top: 0; color: var(--accent); }
+  .card p, .card ul { margin: 8px 0; color: var(--text); font-size: 14px; }
+  .pill {
+    display: inline-block;
+    background: var(--pill);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    margin-right: 6px;
+  }
+  .meta {
+    background: var(--panel);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .meta strong { color: #f8fafc; }
+  .note {
+    background: #1a2b1a;
+    border-left: 3px solid var(--success);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 16px 0;
+    color: #d1fae5;
+    font-size: 14px;
+  }
+  .warn {
+    background: #2b1e0f;
+    border-left: 3px solid var(--warn);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 16px 0;
+    color: #fde68a;
+    font-size: 14px;
+  }
+  .steplist { counter-reset: step; padding-left: 0; list-style: none; }
+  .steplist li {
+    counter-increment: step;
+    padding-left: 44px;
+    position: relative;
+    margin: 14px 0;
+  }
+  .steplist li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0; top: 2px;
+    width: 30px; height: 30px;
+    background: var(--accent);
+    color: #0f172a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+  footer a { margin-right: 16px; }
+  .disclaimer { color: var(--muted); font-size: 13px; margin: 24px 0; font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>MaternalGuard</h1>
+<p class="lede">A rule-based maternal-health MCP server with a buttons-only clinician dashboard and governed FHIR write-back. Honorable Mention (top 10 of 300+), <a href="https://agents-assemble.devpost.com/">Agents Assemble — The Healthcare AI Endgame</a>, May 2026.</p>
+
+<div class="headline">
+  <p><span class="num">1 in 25</span> pregnancies develops severe preeclampsia. MaternalGuard's dashboard turns 5 tool JSON returns into a single one-click huddle — from tool call to accepted FHIR Task in ~2 seconds, with an ONC HTI-1 (b)(11) Decision Support Intervention Provenance every clinician can audit.</p>
+</div>
+
+<div class="cta-row">
+  <a class="cta" href="#run-it">Try it in 60 seconds ↓</a>
+  <a class="cta sec" href="/dsi/model-card.json">CHAI Model Card (JSON)</a>
+  <a class="cta sec" href="/dsi/model-card.md">Model Card (Markdown)</a>
+  <a class="cta sec" href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon">GitHub</a>
+</div>
+
+<div class="disclaimer">Decision support only. MaternalGuard never orders, prescribes, or contacts patients. Every FHIR write is draft-only and requires clinician sign-off. Hackathon prototype; no legal entity backs this artifact.</div>
+
+<hr>
+
+<h2>Why this exists</h2>
+<p>Roughly 800 US maternal deaths per year, ~60% preventable per the CDC. The most preventable pattern: pre-eclampsia signals evolving silently between visits (rising BP + elevated AST + falling platelets) because a clinician has to open five different chart views to see them together. MaternalGuard reads BP + AST + platelets + conditions + SDOH in one MCP tool call and drafts the MFM consult — with the ACOG citation and the Provenance every draft needs for (b)(11) compliance.</p>
+
+<div class="cols">
+  <div class="card">
+    <h3>For Prompt Opinion builders (Pawan's copilot thesis)</h3>
+    <p>MaternalGuard maps 1:1 to <em>From 1000 Clicks to Copilots</em>:</p>
+    <ul>
+      <li>Buttons-only dashboard: Approve / Reject / Activate / Dismiss. Zero typing. Server supplies the audit reason so the trail stays populated.</li>
+      <li>Optimistic toast on click (instant "Approving: &lt;task&gt;") + green banner at the top of the auto-refreshed huddle — no scrolling to confirm.</li>
+      <li>Multi-tool MCP with 6 tools + A2A wiring: <code>AssessMaternalRisk</code>, <code>InterpretLabTrends</code>, <code>ScreenSocialDeterminants</code>, <code>GenerateCarePlan</code>, <code>PredictNeonatalImpact</code>, <code>ProposeMaternalAction</code>, <code>UpdateMaternalAction</code>, <code>OpenMaternalDashboard</code>, <code>ListMaternalActions</code>.</li>
+      <li>SHARP-on-MCP headers: <code>X-FHIR-Server-URL</code>, <code>X-FHIR-Access-Token</code>, <code>X-Patient-ID</code>. Uses Prompt Opinion's FHIR Context Extension out of the box.</li>
+      <li>Soft-degradation contract: any FHIR read failure returns <code>{status:"no-op", blocksNextStep:false}</code>, never a red banner. The Priority-1 chart-writeback loop always completes.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>For (b)(11)-certified stacks like Darena Health (Magnus)</h3>
+    <p>Every governed write emits an <a href="https://build.fhir.org/ig/HL7/aitransparency-ig/">HL7 AI Transparency on FHIR</a> Provenance:</p>
+    <ul>
+      <li><code>meta.profile[0] = AI-Provenance</code>, <code>meta.security[0].code = AIAST</code>.</li>
+      <li>Contained <code>AI-Device</code> (<code>aiKind = rule-based</code>, DSI identifier <code>mg-dsi-v0.4.0</code>) linked to a contained <code>AI-ModelCard</code> DocumentReference.</li>
+      <li>The DocumentReference points at the <a href="/dsi/model-card.json">live CHAI Applied Model Card JSON</a> and <a href="/dsi/model-card.md">Markdown</a> served from this same host. No 404s on ONC (b)(11) source-attribute follow.</li>
+      <li>All 13 <em>45 CFR 170.315(b)(11)(iv)(A)</em> Evidence-Based source attributes carried inline on every Provenance for viewers that don't follow references.</li>
+      <li>USCDI v3.1 alignment, HEDIS PPC (NQF #1517) via CPT-II 0500F/0503F on the drafted Task's <code>reasonCode</code>.</li>
+    </ul>
+  </div>
+</div>
+
+<hr>
+
+<h2 id="run-it">Try it in 60 seconds</h2>
+
+<p>MaternalGuard is deployed as a Prompt Opinion MCP server. To reproduce the demo:</p>
+
+<ol class="steplist">
+  <li>
+    <strong>Register the MCP server in your Prompt Opinion workspace.</strong>
+    <p>Launchpad → Configuration → MCP Servers → New. Endpoint: <code>https://maternalguard.jonathanandrei.com/mcp</code>. Transport: Streamable HTTP. Auth: API Key, header <code>X-API-Key</code> — <a href="mailto:jon_andrei04@hotmail.com">contact the publisher</a> for a key. Enable FHIR Context.</p>
+  </li>
+  <li>
+    <strong>Load Maria Santos as the patient.</strong>
+    <p>Import <a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon/blob/main/test-cases/patient-maria-santos-bundle.json"><code>patient-maria-santos-bundle.json</code></a> from the repo via Patient Data → Import. Maria is a 28y G2P1 at 32 weeks with evolving HELLP: rising BP (118 → 148 systolic), AST 54 U/L (above pregnancy ceiling), platelets 141 → 100 K/uL, spot proteinuria.</p>
+  </li>
+  <li>
+    <strong>Open the Prenatal Visit Prep agent → New chat → select Maria → send:</strong>
+    <pre><code>Draft the appropriate follow-up actions for the current patient.</code></pre>
+    <p>The agent chains 5 data tools once each, then <code>ProposeMaternalAction</code> once per RED/YELLOW recommendation, then <code>OpenMaternalDashboard</code>. All in ~3–5 seconds. No red banners. The dashboard renders inline with Approve/Reject buttons per task.</p>
+  </li>
+  <li>
+    <strong>Click Approve on the top task.</strong>
+    <p>You'll see (a) an instant blue "Approving: &lt;task&gt;" toast, (b) a ~1–2s FHIR round-trip, (c) the huddle re-renders with a green "✓ Approved: &lt;task&gt;" banner at the top. The item disappears from Draft tasks and appears in Recently actioned with an <span class="pill" style="color:#4ade80">accepted</span> badge.</p>
+  </li>
+  <li>
+    <strong>Verify the FHIR Task and Provenance landed.</strong>
+    <p>The <a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon/tree/main/test-cases/postman">Postman collection</a> in the repo has pre-wired requests. Import it, paste your workspace bearer, run <code>2. Tasks → GET Task by ID</code> and <code>4. Provenance → GET Provenance targeting a Task</code>. The Provenance carries the AI-Transparency profile, the AIAST security label, the contained AI-Device + AI-ModelCard, and the 13 source-attribute inline summary.</p>
+  </li>
+</ol>
+
+<div class="note">
+  <strong>Silent success is the point.</strong> The most common state after Approve is a Provenance in the store and a task moved to <code>accepted</code>. If the clinician clicks Reject or Dismiss, the audit reason defaults to <em>"Rejected by clinician during huddle review"</em> so the trail is populated without asking anyone to type.
+</div>
+
+<hr>
+
+<h2>Path to production</h2>
+<p>Prompt Opinion's own tagline is <em>"Healthcare AI is stuck in pilots. That's not an agent problem. That's an assembly problem."</em> Three concrete next steps to move MaternalGuard out of pilot:</p>
+<ul>
+  <li><strong>CDS Hooks bridge alongside MCP.</strong> Darena Health / MeldRx / Epic App Orchard workspaces launch clinical apps via SMART-on-FHIR + CDS Hooks. MaternalGuard's tools port to CDS Hooks in ~1 day of work; the tool logic and Provenance shape stay identical. The same DSI identifier ships against every EHR that speaks SMART.</li>
+  <li><strong>Prospective sensitivity/specificity study against ACOG-benchmarked gold-standard patients.</strong> The current 61-case corpus is balanced-but-synthetic. A residency program with an IRB and 200–500 real prenatal charts would move MaternalGuard from Evidence-Based DSI to something with a real ROC curve.</li>
+  <li><strong>Design partnership with an OB residency or MFM service.</strong> The buttons-only huddle needs 8–12 weeks in real morning-huddle use to earn its "1 in 25 severe preeclampsia" claim as a measured outcome instead of an epidemiology hook.</li>
+</ul>
+
+<div class="meta">
+  <strong>Portability:</strong> MaternalGuard reads and writes standard FHIR R4 with US-Core-Patient profiles. Point <code>X-FHIR-Server-URL</code> at a MeldRx workspace, Epic App Orchard sandbox, Cerner code sandbox, or a HAPI FHIR store — zero code change. The DSI identifier and CHAI Model Card travel with the app across all four.
+</div>
+
+<hr>
+
+<h2>Standards alignment</h2>
+<div class="cols">
+  <div class="card">
+    <h3>Clinical</h3>
+    <p><span class="pill">ACOG PB #190 GDM</span> <span class="pill">PB #201 Pregestational DM</span> <span class="pill">PB #203 Chronic HTN</span> <span class="pill">PB #222 Preeclampsia</span> <span class="pill">PB #229 Antepartum Surveillance</span> <span class="pill">PB #234 Antenatal Steroids</span> <span class="pill">Committee Opinion #706 AMA</span> <span class="pill">IADPSG GDM criteria</span></p>
+  </div>
+  <div class="card">
+    <h3>Regulatory + interop</h3>
+    <p><span class="pill">ONC HTI-1 (b)(11)(iv)(A)</span> <span class="pill">HL7 AI Transparency on FHIR</span> <span class="pill">CHAI Applied Model Card</span> <span class="pill">USCDI v3.1</span> <span class="pill">US Core Patient</span> <span class="pill">HEDIS PPC NQF #1517</span> <span class="pill">CPT-II 0500F/0503F</span> <span class="pill">FHIR R4</span> <span class="pill">SMART-on-FHIR-ready</span></p>
+  </div>
+</div>
+
+<footer>
+  <a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon">GitHub</a>
+  <a href="/dsi/model-card.json">Model Card (JSON)</a>
+  <a href="/dsi/model-card.md">Model Card (MD)</a>
+  <a href="mailto:jon_andrei04@hotmail.com">Contact publisher</a>
+  <div style="margin-top: 16px;">MaternalGuard v2.0. Hackathon prototype; no legal entity. Not for clinical use without a covered-entity sponsor.</div>
+</footer>
+
+</main>
+</body>
+</html>
