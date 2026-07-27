@@ -204,7 +204,7 @@ class PredictNeonatalImpactTool implements IMcpTool {
       "PredictNeonatalImpact",
       {
         description:
-          "Predicts neonatal/newborn risk implications from the pregnant patient's current maternal FHIR data (conditions + recent labs + gestational age). Returns structured neonatal risk projections with ACOG references so the platform AI can brief both OB and pediatric/NICU teams. Returns JSON only. NOT for interactive dashboards — for those, call OpenMaternalDashboard instead.",
+          "Predicts neonatal/newborn risk implications from the pregnant patient's current maternal FHIR data (conditions + recent labs + gestational age). gestationalAgeWeeks accepts a number or a numeric string. Returns structured neonatal risk projections with ACOG references so the platform AI can brief both OB and pediatric/NICU teams. Returns JSON only. NOT for interactive dashboards — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()
@@ -212,9 +212,11 @@ class PredictNeonatalImpactTool implements IMcpTool {
             .describe("FHIR Patient ID. Optional — uses SHARP header if omitted.")
             .optional(),
           gestationalAgeWeeks: z
-            .number()
+            .union([z.number(), z.string()])
             .nullable()
-            .describe("Gestational age in weeks. Drives prematurity risk stratification.")
+            .describe(
+              "Gestational age in weeks. Prefer a number (e.g. 32). A numeric string (\"32\") is also accepted. Drives prematurity risk stratification.",
+            )
             .optional(),
         },
       },
@@ -227,6 +229,19 @@ class PredictNeonatalImpactTool implements IMcpTool {
             );
           }
 
+          // Coerce stringified gestationalAgeWeeks the same way
+          // InterpretLabTrends does. Prompt Opinion agents occasionally
+          // send "32" instead of 32; Zod would otherwise return -32602
+          // and the agent would retry-loop.
+          const gestationalAgeWeeksNum: number | undefined =
+            typeof gestationalAgeWeeks === "number"
+              ? gestationalAgeWeeks
+              : typeof gestationalAgeWeeks === "string" &&
+                  gestationalAgeWeeks.trim() !== "" &&
+                  !isNaN(Number(gestationalAgeWeeks))
+                ? Number(gestationalAgeWeeks)
+                : undefined;
+
           const [conditions, observations] = await Promise.all([
             FhirClientInstance.search(req, "Condition", [`patient=${patientId}`]),
             FhirClientInstance.search(req, "Observation", [
@@ -236,7 +251,7 @@ class PredictNeonatalImpactTool implements IMcpTool {
             ]),
           ]);
 
-          const result = this._buildNeonatalImpact(conditions, observations, gestationalAgeWeeks);
+          const result = this._buildNeonatalImpact(conditions, observations, gestationalAgeWeeksNum);
           return McpUtilities.createJsonResponse(result);
         } catch (error) {
           // Graceful degradation on FHIR-side failures. Soft JSON so no

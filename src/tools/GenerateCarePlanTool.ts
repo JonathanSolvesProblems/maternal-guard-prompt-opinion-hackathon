@@ -14,7 +14,7 @@ class GenerateCarePlanTool implements IMcpTool {
       "GenerateCarePlan",
       {
         description:
-          "Care plan context from FHIR: conditions, allergies, meds, existing care plans, and ACOG-aligned screening recommendations for the gestational age and risk level. Returns JSON only. NOT for interactive dashboards or visual triage boards — for those, call OpenMaternalDashboard instead.",
+          "Care plan context from FHIR: conditions, allergies, meds, existing care plans, and ACOG-aligned screening recommendations for the gestational age and risk level. gestationalAgeWeeks accepts a number or a numeric string. Returns JSON only. NOT for interactive dashboards or visual triage boards — for those, call OpenMaternalDashboard instead.",
         inputSchema: {
           patientId: z
             .string()
@@ -27,9 +27,11 @@ class GenerateCarePlanTool implements IMcpTool {
             .describe('One of: "low", "moderate", "high", "critical". Defaults to "moderate".')
             .optional(),
           gestationalAgeWeeks: z
-            .number()
+            .union([z.number(), z.string()])
             .nullable()
-            .describe("Gestational age in weeks.")
+            .describe(
+              "Gestational age in weeks. Prefer a number (e.g. 32). A numeric string (\"32\") is also accepted.",
+            )
             .optional(),
         },
       },
@@ -41,6 +43,18 @@ class GenerateCarePlanTool implements IMcpTool {
               "No patient ID provided and no patient context found in SHARP headers.",
             );
           }
+
+          // Prompt Opinion agents intermittently stringify number args.
+          // Coerce here so downstream code sees number|undefined and Zod
+          // never returns -32602. Same rescue as InterpretLabTrends.
+          const gestationalAgeWeeksNum: number | undefined =
+            typeof gestationalAgeWeeks === "number"
+              ? gestationalAgeWeeks
+              : typeof gestationalAgeWeeks === "string" &&
+                  gestationalAgeWeeks.trim() !== "" &&
+                  !isNaN(Number(gestationalAgeWeeks))
+                ? Number(gestationalAgeWeeks)
+                : undefined;
 
           const [patient, conditions, allergies, medications, existingCarePlans] =
             await Promise.all([
@@ -68,7 +82,7 @@ class GenerateCarePlanTool implements IMcpTool {
             medications,
             existingCarePlans,
             riskLevel || "moderate",
-            gestationalAgeWeeks ?? undefined,
+            gestationalAgeWeeksNum,
           );
           return McpUtilities.createJsonResponse(result);
         } catch (error) {

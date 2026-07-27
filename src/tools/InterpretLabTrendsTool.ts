@@ -164,19 +164,47 @@ class InterpretLabTrendsTool implements IMcpTool {
           }
 
           // The Prompt Opinion agent occasionally serialises array/number
-          // arguments as strings ("Platelets,Protein" instead of
-          // ["Platelets","Protein"]; "28" instead of 28). Zod would
-          // previously -32602 the whole call at validation time, before
-          // this handler's soft-degrade catch could fire, and Prompt
-          // Opinion painted the row red. Schema now accepts both shapes;
-          // coerce here so the rest of the handler always sees a
-          // string[] and number|undefined.
-          const labTypesArray: string[] =
-            typeof labTypes === "string"
-              ? labTypes.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
-              : Array.isArray(labTypes)
-                ? labTypes
-                : [];
+          // arguments as strings. Observed forms:
+          //   ["Platelets","Protein"]                — native array (correct)
+          //   "Platelets,Protein"                    — comma-separated string
+          //   "[\"Platelets\", \"Protein\"]"        — JSON-stringified array literal
+          //   "[\"Blood Pressure Panel\", \"AST\"]" — same, spaces + multi-word
+          // Zod would previously -32602 the whole call at validation
+          // time, before the handler's soft-degrade catch could fire,
+          // and Prompt Opinion painted the row red. Schema accepts both
+          // shapes; parse here so the rest of the handler always sees a
+          // real string[].
+          //
+          // Order matters: JSON.parse FIRST so `"[\"a\", \"b\"]"` becomes
+          // ["a","b"] rather than being CSV-split into ['["a"', ' "b"]']
+          // with stray brackets and quotes stuck to each token.
+          const labTypesArray: string[] = ((): string[] => {
+            if (Array.isArray(labTypes)) {
+              return labTypes.filter((s): s is string => typeof s === "string");
+            }
+            if (typeof labTypes !== "string") return [];
+            const trimmed = labTypes.trim();
+            if (trimmed === "") return [];
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+              try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                  return parsed
+                    .map((x) => (typeof x === "string" ? x : String(x)))
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                }
+              } catch {
+                // Fall through to CSV split — some models emit brackets
+                // without valid quoting (e.g. [Platelets, AST]).
+              }
+            }
+            return trimmed
+              .replace(/^\[|\]$/g, "")
+              .split(/[,;|]/)
+              .map((s) => s.trim().replace(/^["']|["']$/g, ""))
+              .filter(Boolean);
+          })();
 
           const gestationalAgeWeeksNum: number | undefined =
             typeof gestationalAgeWeeks === "number"
