@@ -164,6 +164,19 @@ app.post("/mcp", async (req, res) => {
       const idsPart = idBits.length ? ` ids=[${idBits.join(",")}]` : "";
       if (process.env["MATERNALGUARD_DEBUG_ARGS"] === "true") {
         console.log(`[MCP]   tool=${req.body.params.name} args=${JSON.stringify(args)} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
+        // Print the actual bearer so the operator can grep it out of
+        // the terminal into the Postman collection variable. Only fires
+        // when DEBUG_ARGS is on. Prompt Opinion invokes MaternalGuard
+        // server-to-server, so the X-FHIR-Access-Token never shows up in
+        // the browser DevTools Network panel — logging it here is the
+        // ONLY practical way for a local operator to see it.
+        // Never enable this on Railway/production; the bearer is
+        // workspace-wide FHIR auth for the length of one Prompt Opinion
+        // session refresh (usually ~1 hour) and stdout collection there
+        // is a real leak surface.
+        if (hasToken) {
+          console.log(`[MCP]   bearer(copy this into Postman bearerToken var)=${rawToken}`);
+        }
       } else {
         console.log(`[MCP]   tool=${req.body.params.name} argKeys=[${argKeys.join(",")}]${idsPart} token=${hasToken ? `YES(len=${tokenLen})` : "NO"}`);
       }
