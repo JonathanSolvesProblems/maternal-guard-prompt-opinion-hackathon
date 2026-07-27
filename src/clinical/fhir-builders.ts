@@ -213,12 +213,15 @@ export interface ProvenanceInput {
 // expects (see 45 CFR 170.315(b)(11)(iv)(A)).
 export const MATERNALGUARD_DSI_IDENTIFIER_SYSTEM =
   "https://maternalguard.local/dsi";
-export const MATERNALGUARD_DSI_VERSION = "0.3.1";
+export const MATERNALGUARD_DSI_VERSION = "0.4.0";
 export const MATERNALGUARD_DSI_RELEASE_DATE = "2026-05-15";
+// URLs are versionless and always serve the latest CHAI card. The versioned
+// history lives in git and in the changeLog array inside the JSON itself.
+// See static/dsi/model-card.{json,md} for the content served here.
 export const MATERNALGUARD_MODEL_CARD_JSON_URL =
-  "https://maternalguard.local/dsi/model-cards/mg-v0.3.1.chai.json";
+  "https://maternalguard.jonathanandrei.com/dsi/model-card.json";
 export const MATERNALGUARD_MODEL_CARD_MARKDOWN_URL =
-  "https://maternalguard.local/dsi/model-cards/mg-v0.3.1.md";
+  "https://maternalguard.jonathanandrei.com/dsi/model-card.md";
 
 // Canonical URLs from the HL7 AI Transparency on FHIR IG (v1.0.0-ballot,
 // DSTU ballot targeted for January 2026). These are the real IG canonicals,

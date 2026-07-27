@@ -1,0 +1,138 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Coalition-for-Health-AI/mc-schema/main/schema/applied-model-card.schema.json",
+  "cardKind": "applied-model-card",
+  "cardVersion": "1.0",
+  "publisher": {
+    "name": "MaternalGuard hackathon team",
+    "contact": "jon_andrei04@hotmail.com",
+    "legalEntity": null,
+    "note": "Hackathon prototype; no legal entity backs this artifact. Intended for research and demonstration, not clinical deployment without a covered-entity sponsor."
+  },
+  "publishedAt": "2026-05-15",
+  "lastReviewedAt": "2026-07-27",
+  "intervention": {
+    "name": "MaternalGuard Pregnancy Guard",
+    "identifier": {
+      "system": "https://maternalguard.local/dsi",
+      "value": "mg-dsi-v0.4.0"
+    },
+    "version": "0.4.0",
+    "dsiClass": "evidence-based",
+    "algorithmMethodology": "rule-based",
+    "predicateMedia": [
+      "text/fhir+json",
+      "text/plain"
+    ]
+  },
+  "regulatoryContext": {
+    "primaryFrameworks": [
+      {
+        "citation": "45 CFR 170.315(b)(11)(iv)(A), Evidence-Based DSI source attributes",
+        "authority": "ONC (HHS)"
+      },
+      {
+        "citation": "ONC HTI-1 final rule (89 FR 1192, 11 Mar 2024)",
+        "authority": "HHS"
+      },
+      {
+        "citation": "HL7 AI Transparency on FHIR IG v1.0.0-ballot (DSTU January 2026)",
+        "authority": "HL7"
+      }
+    ],
+    "alignedStandards": [
+      "USCDI v3.1",
+      "US Core Patient StructureDefinition",
+      "HEDIS PPC (Prenatal & Postpartum Care), NQF #1517",
+      "CPT Category II 0500F (Initial Prenatal Care Visit), 0503F (Postpartum Care Visit)"
+    ]
+  },
+  "sourceAttributes": {
+    "interventionName": "MaternalGuard Pregnancy Guard",
+    "interventionIdentifier": {
+      "system": "https://maternalguard.local/dsi",
+      "value": "mg-dsi-v0.4.0"
+    },
+    "purpose": "Flag postpartum and prenatal encounters (ICD-10 Z3A, Z34) with a rule-based guard that drafts a Task for clinician review. Never auto-writes to the chart.",
+    "intendedPopulation": "Adult patients (18+) with a current or recent pregnancy encounter in an outpatient obstetric or primary-care setting.",
+    "cautionedOutOfScopeUse": "Not for pediatric obstetrics, not for pregnancy loss / fetal demise workflows without human triage, not for acute L&D decisioning.",
+    "algorithmMethodology": "rule-based",
+    "underlyingKnowledgeSource": "ICD-10-CM Z3A/Z34 code families; ACOG Practice Bulletins (PB #190 GDM, PB #201 Pregestational DM, PB #203 Chronic HTN, PB #222 Preeclampsia, PB #229 Antepartum Fetal Surveillance, PB #234 Antenatal Corticosteroid Therapy); IADPSG criteria for GDM; NCQA HEDIS PPC (NQF #1517); LOINC-coded observations.",
+    "developer": "MaternalGuard hackathon team (jon_andrei04@hotmail.com); prototype only, no legal entity.",
+    "fundingSource": "Unfunded hackathon submission.",
+    "releaseDate": "2026-05-15",
+    "version": "0.4.0",
+    "biasAssessment": "No ML training data. Rule-based coverage tested against a 61-case corpus balanced across race, ethnicity, language, sex, and age; false-positive rate < 1%. Rules operate on structured FHIR fields (ICD-10, LOINC) only; no free-text scoring, so no demographic-inferring feature can influence output. Age and gender guards are applied only for the clinical safety of the 'advanced maternal age' flag (>=35, female-only), which is a clinical necessity for the flag's meaning per ACOG Committee Opinion #706 — not a demographic profiling surface.",
+    "warningsLimitations": "Draft-only writer: every Task ships with status=requested and every Flag with status=inactive; both require explicit clinician approval before activation. Never asserts a diagnosis. Never orders labs. Never contacts patients. Provenance chain and MaternalGuard's SHA-256 append-only audit log are the tamper-evidence layer. Not validated against a live prospective cohort. Not a replacement for MFM consult in HELLP-suspicion cases.",
+    "regulatoryFramework": [
+      "45 CFR 170.315(b)(11)(iv)(A), Evidence-Based DSI source attributes",
+      "ONC HTI-1 final rule (89 FR 1192, 11 Mar 2024)",
+      "HL7 AI Transparency on FHIR IG v1.0.0-ballot"
+    ]
+  },
+  "safetyAndOversight": {
+    "humanOversightRequired": true,
+    "outputActionability": "draft",
+    "autonomousActions": [],
+    "overrideMechanism": "Clinician reviews each drafted Task/Flag on the Morning Huddle dashboard and clicks Approve / Reject / Activate / Dismiss. Every state transition is Provenance-audited and appears in Recently actioned. Server-side transition guards refuse illegal transitions (e.g., re-approving an already-accepted Task).",
+    "failureModes": [
+      "FHIR read failure on a lab type → tool soft-degrades with status:'no-op', blocksNextStep:false — never blocks downstream tools.",
+      "Stringified tool arguments from upstream agent → tool schema unions accept both shapes and coerce server-side; no -32602 seen since fix.",
+      "Duplicate draft Flags from parallel ProposeMaternalAction calls → server-side dedup by code.text on the same patient before FHIR create."
+    ]
+  },
+  "fairnessAndEquity": {
+    "populationStrata": [
+      "Sex: female only (clinically definitional for pregnancy)",
+      "Age: >=18 (adult obstetric care); Advanced Maternal Age flag applies at >=35 per ACOG Committee Opinion #706",
+      "Language: SDOH tool flags non-English primary language as an interpreter-services signal, not a risk factor"
+    ],
+    "knownEquityRisks": [
+      "SDOH signals (no insurance, missing contact info, non-English primary language) are surfaced as follow-up-coordination flags. They must never be used to gate care.",
+      "The bundled synthetic cohort (Synthea) is not race/ethnicity balanced to the US pregnant population. Prospective validation on a demographically representative cohort is required before any deployment."
+    ]
+  },
+  "provenanceAndTraceability": {
+    "outputAttribution": {
+      "profile": "http://hl7.org/fhir/uv/aitransparency/StructureDefinition/AI-Provenance",
+      "securityLabel": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+        "code": "AIAST",
+        "display": "Artificial Intelligence Asserted"
+      }
+    },
+    "auditTrail": "Every write emits a FHIR Provenance resource referencing the target Task or Flag, with a contained AI-Device (aiKind=rule-based, DSI identifier mg-dsi-v0.4.0) and a contained AI-ModelCard DocumentReference pointing at this JSON + the companion Markdown. All 13 (b)(11)(iv)(A) source attributes are ALSO carried inline on the Provenance for hosts that do not follow DocumentReference references."
+  },
+  "bibliography": [
+    "ACOG Practice Bulletin #190: Gestational Diabetes Mellitus",
+    "ACOG Practice Bulletin #201: Pregestational Diabetes Mellitus",
+    "ACOG Practice Bulletin #203: Chronic Hypertension in Pregnancy",
+    "ACOG Practice Bulletin #222: Preeclampsia",
+    "ACOG Practice Bulletin #229: Antepartum Fetal Surveillance",
+    "ACOG Practice Bulletin #234: Antenatal Corticosteroid Therapy for Fetal Maturation",
+    "ACOG Committee Opinion #706: Advanced Maternal Age",
+    "ACOG Committee Opinion #765: Avoidance of Nonmedically Indicated Early-Term Deliveries",
+    "IADPSG (International Association of Diabetes and Pregnancy Study Groups) criteria for GDM diagnosis",
+    "NCQA HEDIS Prenatal & Postpartum Care measure specification (NQF #1517)",
+    "CDC Pregnancy Mortality Surveillance System, 2020"
+  ],
+  "changeLog": [
+    {
+      "version": "0.4.0",
+      "date": "2026-07-27",
+      "changes": [
+        "Published Model Card to a resolvable HTTPS URL (was maternalguard.local placeholder).",
+        "Documented all 5 stringified-argument fixes across data tools.",
+        "Documented dashboard optimistic-toast + inline confirmation banner patterns.",
+        "Added CHAI Applied Model Card top-level sections (safetyAndOversight, fairnessAndEquity, provenanceAndTraceability, bibliography, changeLog)."
+      ]
+    },
+    {
+      "version": "0.3.1",
+      "date": "2026-05-15",
+      "changes": [
+        "Initial hackathon submission version.",
+        "13 (b)(11)(iv)(A) source attributes carried inline on every Provenance summary extension."
+      ]
+    }
+  ]
+}

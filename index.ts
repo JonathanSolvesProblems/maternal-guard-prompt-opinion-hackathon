@@ -100,6 +100,44 @@ const port = process.env["PORT"] || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Reviewer reproduction guide, published Model Card, and root redirect.
+// Served straight from the container's ./static tree so the same deployment
+// answers /mcp AND resolves the URLs every Provenance references. The paths
+// map 1:1 to the URLs baked into MATERNALGUARD_MODEL_CARD_{JSON,MARKDOWN}_URL
+// in src/clinical/fhir-builders.ts, so a viewer clicking the Model Card link
+// on a Provenance lands on real content, not a 404.
+//
+// long-lived cache-control on the DSI files matches the "immutable per
+// version" contract: the URLs are versionless, but the versioned copy is
+// tracked in git — bumping MATERNALGUARD_DSI_VERSION + editing the file +
+// redeploying is what changes what these URLs serve.
+const STATIC_ROOT = path.join(__dirname, "static");
+app.get("/", (_, res) => res.redirect(302, "/guide"));
+app.get("/guide", (_, res) => {
+  res
+    .set("cache-control", "public, max-age=300")
+    .sendFile(path.join(STATIC_ROOT, "guide", "index.html"));
+});
+app.use(
+  "/guide",
+  express.static(path.join(STATIC_ROOT, "guide"), {
+    maxAge: "5m",
+    fallthrough: false,
+  }),
+);
+app.get("/dsi/model-card.json", (_, res) => {
+  res
+    .set("content-type", "application/json; charset=utf-8")
+    .set("cache-control", "public, max-age=3600")
+    .sendFile(path.join(STATIC_ROOT, "dsi", "model-card.json"));
+});
+app.get("/dsi/model-card.md", (_, res) => {
+  res
+    .set("content-type", "text/markdown; charset=utf-8")
+    .set("cache-control", "public, max-age=3600")
+    .sendFile(path.join(STATIC_ROOT, "dsi", "model-card.md"));
+});
+
 app.get("/debug/bearer", (_, res) => {
   // Local-only helper for grabbing the current FHIR bearer JWT for the
   // Postman collection. Rendered as a browser page with a Copy button
