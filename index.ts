@@ -24,6 +24,11 @@ const SERVER_VERSION = pkg.version;
 // restart, so restarts always re-print the current token.
 const SEEN_BEARERS = new Set<string>();
 
+// Most-recent bearer seen this run, served at /debug/bearer under
+// DEBUG_ARGS so the operator can grab a clean copy in the browser
+// without terminal wrapping mangling the JWT.
+let LATEST_BEARER: string | null = null;
+
 // The prefab-ui renderer HTML we serve at ui://prefab/renderer.html. We
 // keep BOTH shapes on hand and pick one at boot via env var, so we can
 // A/B without re-downloading:
@@ -95,6 +100,97 @@ const port = process.env["PORT"] || 5000;
 app.use(cors());
 app.use(express.json());
 
+app.get("/debug/bearer", (_, res) => {
+  // Local-only helper for grabbing the current FHIR bearer JWT for the
+  // Postman collection. Rendered as a browser page with a Copy button
+  // so the operator does not have to select-and-copy the token out of
+  // the terminal (where terminal line-wrap and Postman's "Secrets
+  // Detected" flow both produce a subtly wrong paste that returns 401).
+  //
+  // Gated on MATERNALGUARD_DEBUG_ARGS=true so it is inert in any shared
+  // deployment. The endpoint returns 404 otherwise so the URL is not
+  // even discoverable. Never enable DEBUG_ARGS on Railway/production.
+  if (process.env["MATERNALGUARD_DEBUG_ARGS"] !== "true") {
+    return res.status(404).send("Not found");
+  }
+  const bearer = LATEST_BEARER;
+  if (!bearer) {
+    return res
+      .status(200)
+      .set("content-type", "text/html; charset=utf-8")
+      .send(
+        `<!doctype html><meta charset="utf-8"><body style="font:14px/1.5 system-ui;max-width:640px;margin:40px auto;padding:0 16px;color:#111">
+        <h2 style="margin:0 0 12px">No bearer captured yet</h2>
+        <p>The server has not seen an <code>X-FHIR-Access-Token</code> header yet.</p>
+        <ol>
+          <li>Open Prompt Opinion in your browser.</li>
+          <li>Send any prompt (even "hi") in a chat where MaternalGuard is registered.</li>
+          <li>Reload this page.</li>
+        </ol>
+        </body>`,
+      );
+  }
+  // Never HTML-escape into JS by concatenation. The bearer is
+  // base64url + JWT dots so it cannot contain HTML metacharacters,
+  // but be defensive anyway.
+  const safe = bearer.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!),
+  );
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MaternalGuard bearer</title>
+<style>
+  html,body{margin:0;padding:0;background:#0f172a;color:#e2e8f0;font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+  main{max-width:900px;margin:0 auto;padding:40px 24px}
+  h1{margin:0 0 8px;font-size:20px;color:#f8fafc}
+  p{margin:0 0 20px;color:#94a3b8}
+  textarea{width:100%;min-height:200px;background:#020617;color:#22d3ee;border:1px solid #334155;border-radius:8px;padding:12px;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;box-sizing:border-box;white-space:pre;overflow:auto;word-break:break-all}
+  .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  button{background:#22d3ee;color:#0f172a;border:none;padding:10px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px}
+  button:hover{background:#67e8f9}
+  button.sec{background:#334155;color:#e2e8f0}
+  button.sec:hover{background:#475569}
+  .ok{color:#4ade80;font-weight:600;margin-left:8px}
+  .meta{margin-top:24px;padding:12px 16px;background:#1e293b;border-radius:8px;border-left:3px solid #22d3ee;font-size:13px}
+  code{background:#020617;padding:2px 6px;border-radius:3px;color:#22d3ee}
+</style>
+</head>
+<body>
+<main>
+  <h1>Current FHIR bearer for Postman</h1>
+  <p>Paste this into the <code>bearerToken</code> variable in the MaternalGuard Postman collection.</p>
+  <textarea id="tok" readonly onclick="this.select()">${safe}</textarea>
+  <div class="row">
+    <button id="copy">Copy to clipboard</button>
+    <button class="sec" onclick="location.reload()">Refresh (grab newer)</button>
+    <span id="msg" class="ok" style="display:none">Copied</span>
+  </div>
+  <div class="meta">
+    <div><strong>Length:</strong> ${bearer.length} chars</div>
+    <div><strong>Starts:</strong> <code>${safe.slice(0, 20)}...</code></div>
+    <div><strong>Ends:</strong> <code>...${safe.slice(-20)}</code></div>
+    <div style="margin-top:8px;color:#94a3b8">Token rotates when the Prompt Opinion session refreshes. If you see 401 in Postman, come back here and Copy again.</div>
+  </div>
+</main>
+<script>
+document.getElementById('copy').onclick = async () => {
+  const ta = document.getElementById('tok');
+  try {
+    await navigator.clipboard.writeText(ta.value);
+  } catch { ta.select(); document.execCommand('copy'); }
+  const msg = document.getElementById('msg');
+  msg.style.display = 'inline';
+  setTimeout(() => { msg.style.display = 'none'; }, 1500);
+};
+</script>
+</body>
+</html>`;
+  res.set("content-type", "text/html; charset=utf-8").send(html);
+});
+
 app.get("/health", async (_, res) => {
   // Tool list is derived from the tools barrel at request time, so it
   // stays in sync as tools are added or removed. MaternalPanelScan is
@@ -162,6 +258,12 @@ app.post("/mcp", async (req, res) => {
     // that fires 4 requests does not spam the terminal with 4 copies of
     // the same 1330-char JWT; when the session refreshes and mints a
     // new token, the new one prints once.
+    if (hasToken) {
+      // Always update LATEST_BEARER so /debug/bearer serves the most
+      // recent token even outside DEBUG_ARGS mode. The endpoint itself
+      // is DEBUG_ARGS-gated.
+      LATEST_BEARER = String(rawToken);
+    }
     if (
       process.env["MATERNALGUARD_DEBUG_ARGS"] === "true" &&
       hasToken &&
@@ -169,7 +271,7 @@ app.post("/mcp", async (req, res) => {
     ) {
       SEEN_BEARERS.add(String(rawToken));
       console.log(
-        `[MCP]   bearer(copy this into Postman bearerToken var)=${rawToken}`,
+        `[MCP]   bearer(copy from http://localhost:${port}/debug/bearer or from here)=${rawToken}`,
       );
     }
 
