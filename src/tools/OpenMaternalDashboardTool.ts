@@ -446,52 +446,82 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     }),
                   },
                 });
+              // shortDesc is baked into the toast text so the confirmation
+              // is unambiguous even when 6+ toasts stack from bulk actions.
+              const shortDesc = desc.length > 60 ? `${desc.slice(0, 57)}...` : desc;
               const buttonsRow = row({ gap: 2 }, [
                 button("Approve", {
                   variant: "default",
-                  onClick: callTool({
-                    tool: "UpdateMaternalAction",
-                    arguments: { action: "approve", taskId: tid },
-                    onSuccess: [
-                      showToast({
-                        message: "Approved",
-                        description:
-                          "Task moved to accepted. Look for the green confirmation banner at the top of the refreshed dashboard.",
-                        variant: "success",
-                        duration: 8000,
-                      }),
-                      refreshDashboardAfter("approved"),
-                    ],
-                    onError: showToast({
-                      message: "Already actioned",
+                  // Immediate optimistic toast fires the instant the button
+                  // is clicked so the clinician sees "click received,
+                  // working on it" within milliseconds — before the ~1-2s
+                  // FHIR round-trip completes. Without this pre-toast, the
+                  // button just sits there during the round-trip and the
+                  // clinician wonders whether the click registered. The
+                  // success toast (with duration 10000) then fires when the
+                  // FHIR write actually lands, replacing the "Approving..."
+                  // hint.
+                  onClick: [
+                    showToast({
+                      message: `Approving: ${shortDesc}`,
                       description:
-                        "This task has already been resolved. Check Recently actioned below to see its current status.",
-                      variant: "warning",
+                        "Writing to FHIR store. This takes about a second. A green confirmation will follow.",
+                      variant: "info",
+                      duration: 3000,
                     }),
-                  }),
+                    callTool({
+                      tool: "UpdateMaternalAction",
+                      arguments: { action: "approve", taskId: tid },
+                      onSuccess: [
+                        showToast({
+                          message: `Approved: ${shortDesc}`,
+                          description:
+                            "Task moved to accepted. Refreshing the huddle below with a green banner.",
+                          variant: "success",
+                          duration: 10000,
+                        }),
+                        refreshDashboardAfter("approved"),
+                      ],
+                      onError: showToast({
+                        message: "Already actioned",
+                        description:
+                          "This task has already been resolved. Check Recently actioned below to see its current status.",
+                        variant: "warning",
+                      }),
+                    }),
+                  ],
                 }),
                 button("Reject", {
                   variant: "outline",
-                  onClick: callTool({
-                    tool: "UpdateMaternalAction",
-                    arguments: { action: "reject", taskId: tid },
-                    onSuccess: [
-                      showToast({
-                        message: "Rejected",
-                        description:
-                          "Task rejected with default audit reason. Look for the green confirmation banner at the top of the refreshed dashboard.",
-                        variant: "info",
-                        duration: 8000,
-                      }),
-                      refreshDashboardAfter("rejected"),
-                    ],
-                    onError: showToast({
-                      message: "Already actioned",
+                  onClick: [
+                    showToast({
+                      message: `Rejecting: ${shortDesc}`,
                       description:
-                        "This task has already been resolved. Check Recently actioned below to see its current status.",
-                      variant: "warning",
+                        "Writing to FHIR store. This takes about a second.",
+                      variant: "info",
+                      duration: 3000,
                     }),
-                  }),
+                    callTool({
+                      tool: "UpdateMaternalAction",
+                      arguments: { action: "reject", taskId: tid },
+                      onSuccess: [
+                        showToast({
+                          message: `Rejected: ${shortDesc}`,
+                          description:
+                            "Task rejected with default audit reason. Refreshing the huddle below.",
+                          variant: "info",
+                          duration: 10000,
+                        }),
+                        refreshDashboardAfter("rejected"),
+                      ],
+                      onError: showToast({
+                        message: "Already actioned",
+                        description:
+                          "This task has already been resolved. Check Recently actioned below to see its current status.",
+                        variant: "warning",
+                      }),
+                    }),
+                  ],
                 }),
               ]);
 
@@ -545,54 +575,74 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     }),
                   },
                 });
+              const shortFinding =
+                finding.length > 60 ? `${finding.slice(0, 57)}...` : finding;
               const flagButtons =
                 fst === "inactive"
                   ? row({ gap: 2 }, [
                       button("Activate", {
                         variant: "default",
-                        onClick: callTool({
-                          tool: "UpdateMaternalAction",
-                          arguments: { action: "activate-flag", flagId: fid },
-                          onSuccess: [
-                            showToast({
-                              message: "Activated",
-                              description:
-                                "Flag activated on the chart. Look for the green confirmation banner at the top of the refreshed dashboard.",
-                              variant: "success",
-                              duration: 8000,
-                            }),
-                            refreshFlagDashboardAfter("activated"),
-                          ],
-                          onError: showToast({
-                            message: "Already actioned",
+                        onClick: [
+                          showToast({
+                            message: `Activating: ${shortFinding}`,
                             description:
-                              "This flag has already been resolved. Check Recently actioned below to see its current status.",
-                            variant: "warning",
+                              "Writing to FHIR store. A green confirmation will follow.",
+                            variant: "info",
+                            duration: 3000,
                           }),
-                        }),
+                          callTool({
+                            tool: "UpdateMaternalAction",
+                            arguments: { action: "activate-flag", flagId: fid },
+                            onSuccess: [
+                              showToast({
+                                message: `Activated: ${shortFinding}`,
+                                description:
+                                  "Flag activated on the chart. Refreshing the huddle below.",
+                                variant: "success",
+                                duration: 10000,
+                              }),
+                              refreshFlagDashboardAfter("activated"),
+                            ],
+                            onError: showToast({
+                              message: "Already actioned",
+                              description:
+                                "This flag has already been resolved. Check Recently actioned below to see its current status.",
+                              variant: "warning",
+                            }),
+                          }),
+                        ],
                       }),
                       button("Dismiss", {
                         variant: "outline",
-                        onClick: callTool({
-                          tool: "UpdateMaternalAction",
-                          arguments: { action: "dismiss-flag", flagId: fid },
-                          onSuccess: [
-                            showToast({
-                              message: "Dismissed",
-                              description:
-                                "Flag dismissed with default audit reason. Look for the green confirmation banner at the top of the refreshed dashboard.",
-                              variant: "info",
-                              duration: 8000,
-                            }),
-                            refreshFlagDashboardAfter("dismissed"),
-                          ],
-                          onError: showToast({
-                            message: "Already actioned",
+                        onClick: [
+                          showToast({
+                            message: `Dismissing: ${shortFinding}`,
                             description:
-                              "This flag has already been resolved. Check Recently actioned below to see its current status.",
-                            variant: "warning",
+                              "Writing to FHIR store.",
+                            variant: "info",
+                            duration: 3000,
                           }),
-                        }),
+                          callTool({
+                            tool: "UpdateMaternalAction",
+                            arguments: { action: "dismiss-flag", flagId: fid },
+                            onSuccess: [
+                              showToast({
+                                message: `Dismissed: ${shortFinding}`,
+                                description:
+                                  "Flag dismissed with default audit reason. Refreshing the huddle below.",
+                                variant: "info",
+                                duration: 10000,
+                              }),
+                              refreshFlagDashboardAfter("dismissed"),
+                            ],
+                            onError: showToast({
+                              message: "Already actioned",
+                              description:
+                                "This flag has already been resolved. Check Recently actioned below to see its current status.",
+                              variant: "warning",
+                            }),
+                          }),
+                        ],
                       }),
                     ])
                   : muted(`Status: ${fst}`);
