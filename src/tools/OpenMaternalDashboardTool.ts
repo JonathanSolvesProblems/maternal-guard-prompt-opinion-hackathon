@@ -91,6 +91,28 @@ class OpenMaternalDashboardTool implements IMcpTool {
               "Which dashboard view to render. Always pass 'default' unless you have a specific reason to choose another.",
             )
             .optional(),
+          // Internal: chained OpenMaternalDashboard calls from button
+          // onSuccess pass a lastAction blob so the fresh render can
+          // show a prominent inline confirmation at the TOP of the
+          // dashboard. Prompt Opinion's toast lands at the viewport
+          // bottom (no position API in prefab-ui showToast schema); this
+          // banner replaces the "did it work?" moment with an in-place
+          // visual answer. Model callers should not set this; button
+          // wiring sets it automatically.
+          lastAction: z
+            .union([
+              z.string(),
+              z.object({
+                action: z.string().optional(),
+                kind: z.string().optional(),
+                title: z.string().optional(),
+              }),
+            ])
+            .nullable()
+            .optional()
+            .describe(
+              "Internal use only. Populated by dashboard button chains to render an inline confirmation on the refreshed view. Do not set from a plain user prompt.",
+            ),
         },
         // Per fastmcp source (FastMCPApp.ui decorator → tool._meta), plus
         // LoopGuard's live wire capture:
@@ -114,6 +136,37 @@ class OpenMaternalDashboardTool implements IMcpTool {
         },
       },
       async (_input) => {
+        // Parse the lastAction blob. Accepts native object OR
+        // JSON-stringified object (Prompt Opinion sometimes serialises
+        // nested action arguments). Silently drops malformed values so a
+        // bad marker never blocks the dashboard.
+        const rawLastAction = (_input as { lastAction?: unknown } | undefined)
+          ?.lastAction;
+        let parsedLastAction:
+          | { action?: string; kind?: string; title?: string }
+          | null = null;
+        if (rawLastAction && typeof rawLastAction === "object") {
+          parsedLastAction = rawLastAction as {
+            action?: string;
+            kind?: string;
+            title?: string;
+          };
+        } else if (typeof rawLastAction === "string" && rawLastAction.trim()) {
+          try {
+            const p = JSON.parse(rawLastAction);
+            if (p && typeof p === "object") {
+              parsedLastAction = p as {
+                action?: string;
+                kind?: string;
+                title?: string;
+              };
+            }
+          } catch {
+            // ignore malformed lastAction; dashboard just renders
+            // without the confirmation banner.
+          }
+        }
+
         // PRIMARY: the selected patient from SHARP headers.
         // OPTIONAL: a bundled cohort env var (used only if explicitly configured).
         // The dashboard always works for the currently-selected patient without
@@ -379,10 +432,20 @@ class OpenMaternalDashboardTool implements IMcpTool {
               //      draft-only filter hides accepted/rejected tasks).
               // The clinician SEES the state change instead of having to
               // trust the toast and remember to re-open the dashboard.
-              const refreshDashboard = callTool({
-                tool: "OpenMaternalDashboard",
-                arguments: { mode: "default" },
-              });
+              const refreshDashboardAfter = (
+                verb: "approved" | "rejected",
+              ) =>
+                callTool({
+                  tool: "OpenMaternalDashboard",
+                  arguments: {
+                    mode: "default",
+                    lastAction: JSON.stringify({
+                      action: verb,
+                      kind: "task",
+                      title: desc,
+                    }),
+                  },
+                });
               const buttonsRow = row({ gap: 2 }, [
                 button("Approve", {
                   variant: "default",
@@ -392,9 +455,12 @@ class OpenMaternalDashboardTool implements IMcpTool {
                     onSuccess: [
                       showToast({
                         message: "Approved",
-                        description: "Task moved to accepted. See it under Recently actioned in the refreshed dashboard below.",
+                        description:
+                          "Task moved to accepted. Look for the green confirmation banner at the top of the refreshed dashboard.",
+                        variant: "success",
+                        duration: 8000,
                       }),
-                      refreshDashboard,
+                      refreshDashboardAfter("approved"),
                     ],
                     onError: showToast({
                       message: "Already actioned",
@@ -413,9 +479,11 @@ class OpenMaternalDashboardTool implements IMcpTool {
                       showToast({
                         message: "Rejected",
                         description:
-                          "Task rejected with default audit reason. See it under Recently actioned in the refreshed dashboard below.",
+                          "Task rejected with default audit reason. Look for the green confirmation banner at the top of the refreshed dashboard.",
+                        variant: "info",
+                        duration: 8000,
                       }),
-                      refreshDashboard,
+                      refreshDashboardAfter("rejected"),
                     ],
                     onError: showToast({
                       message: "Already actioned",
@@ -463,10 +531,20 @@ class OpenMaternalDashboardTool implements IMcpTool {
               // Same refresh-on-success pattern as task buttons: dashboard
               // re-invokes itself after the state transition so the
               // just-actioned flag disappears from the huddle.
-              const refreshFlagDashboard = callTool({
-                tool: "OpenMaternalDashboard",
-                arguments: { mode: "default" },
-              });
+              const refreshFlagDashboardAfter = (
+                verb: "activated" | "dismissed",
+              ) =>
+                callTool({
+                  tool: "OpenMaternalDashboard",
+                  arguments: {
+                    mode: "default",
+                    lastAction: JSON.stringify({
+                      action: verb,
+                      kind: "flag",
+                      title: finding,
+                    }),
+                  },
+                });
               const flagButtons =
                 fst === "inactive"
                   ? row({ gap: 2 }, [
@@ -478,9 +556,12 @@ class OpenMaternalDashboardTool implements IMcpTool {
                           onSuccess: [
                             showToast({
                               message: "Activated",
-                              description: "Flag activated on the chart. See it under Recently actioned in the refreshed dashboard below.",
+                              description:
+                                "Flag activated on the chart. Look for the green confirmation banner at the top of the refreshed dashboard.",
+                              variant: "success",
+                              duration: 8000,
                             }),
-                            refreshFlagDashboard,
+                            refreshFlagDashboardAfter("activated"),
                           ],
                           onError: showToast({
                             message: "Already actioned",
@@ -499,9 +580,11 @@ class OpenMaternalDashboardTool implements IMcpTool {
                             showToast({
                               message: "Dismissed",
                               description:
-                                "Flag dismissed with default audit reason. See it under Recently actioned in the refreshed dashboard below.",
+                                "Flag dismissed with default audit reason. Look for the green confirmation banner at the top of the refreshed dashboard.",
+                              variant: "info",
+                              duration: 8000,
                             }),
-                            refreshFlagDashboard,
+                            refreshFlagDashboardAfter("dismissed"),
                           ],
                           onError: showToast({
                             message: "Already actioned",
@@ -636,6 +719,28 @@ class OpenMaternalDashboardTool implements IMcpTool {
           "Decision support only. Clinician review required before any action. MaternalGuard does not place orders, prescribe, or contact patients.",
         );
 
+        // Inline confirmation banner. Rendered at the top of the
+        // dashboard when a button chain re-invokes OpenMaternalDashboard
+        // with lastAction populated. Uses the success alert style so it
+        // is impossible to miss without scrolling. The Prompt Opinion
+        // toast still fires and confirms redundantly at the viewport
+        // bottom; this banner is the primary visual answer to "did the
+        // click work?".
+        const confirmationBanner = parsedLastAction
+          ? alert({ variant: "success" }, [
+              alertTitle(
+                (() => {
+                  const verb = parsedLastAction.action ?? "actioned";
+                  const cap = verb.charAt(0).toUpperCase() + verb.slice(1);
+                  return `✓ ${cap}${parsedLastAction.title ? `: ${parsedLastAction.title}` : ""}`;
+                })(),
+              ),
+              alertDescription(
+                "This is the refreshed huddle. Scroll to Recently actioned on the card below to see the item's new status.",
+              ),
+            ])
+          : null;
+
         const view = column(
           // Iframe width in Prompt Opinion's chat panel is narrower than
           // Tailwind's max-w-5xl (1024px). Drop the outer max-width and
@@ -644,6 +749,7 @@ class OpenMaternalDashboardTool implements IMcpTool {
           { gap: 5, cssClass: "p-4 max-w-full overflow-x-hidden" },
           [
             headerCard,
+            ...(confirmationBanner ? [confirmationBanner] : []),
             metricsGrid,
             ...(emptyState ? [emptyState] : patientCards),
             separator(),
