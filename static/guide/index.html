@@ -3,270 +3,553 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MaternalGuard — Reviewer Reproduction Guide</title>
-<meta name="description" content="Try MaternalGuard in 60 seconds. A rule-based maternal-health MCP server with governed FHIR write-back and ONC HTI-1 (b)(11) Provenance.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🩺%3C/text%3E%3C/svg%3E">
+<title>MaternalGuard — a rule-based maternal-health MCP server</title>
+<meta name="description" content="A buttons-only clinician dashboard with governed FHIR write-back and ONC HTI-1 (b)(11) Decision Support Intervention Provenance. Honorable Mention, Agents Assemble 2026.">
+<meta name="theme-color" content="#FBFBFA">
+<meta property="og:title" content="MaternalGuard">
+<meta property="og:description" content="A rule-based maternal-health MCP server with a buttons-only clinician dashboard and governed FHIR write-back.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://maternalguard.jonathanandrei.com/guide">
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23FBFBFA'/><path d='M2 16 L10 16 L12 8 L16 24 L20 12 L22 16 L30 16' stroke='%23111' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
   :root {
-    color-scheme: dark;
-    --bg: #0f172a;
-    --panel: #1e293b;
-    --panel-2: #0b1220;
-    --border: #334155;
-    --text: #e2e8f0;
-    --muted: #94a3b8;
-    --accent: #22d3ee;
-    --accent-hover: #67e8f9;
-    --success: #4ade80;
-    --warn: #fbbf24;
-    --pill: #0b1220;
-    --code: #22d3ee;
+    --canvas: #FBFBFA;
+    --surface: #ffffff;
+    --ink: #1a1a1a;
+    --ink-soft: #2f3437;
+    --muted: #787774;
+    --rule: #e8e6e0;
+    --rule-soft: #f1efe9;
+    --clinical: #9F2F2D;
+    --clinical-bg: #FDEBEC;
+    --data: #1F6C9F;
+    --data-bg: #E1F3FE;
+    --standards: #346538;
+    --standards-bg: #EDF3EC;
   }
+
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; min-height: 100vh; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { color: var(--accent-hover); text-decoration: underline; }
-  main { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
-  h1 { font-size: 28px; margin: 0 0 8px; color: #f8fafc; letter-spacing: -0.5px; }
-  h2 { font-size: 20px; margin: 44px 0 12px; color: #f8fafc; letter-spacing: -0.3px; }
-  h3 { font-size: 16px; margin: 24px 0 8px; color: #cbd5e1; }
-  .lede { color: var(--muted); font-size: 16px; margin: 0 0 8px; }
-  .headline {
-    background: linear-gradient(135deg, #0b1220 0%, #1e293b 100%);
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--accent);
-    border-radius: 8px;
-    padding: 20px 24px;
-    margin: 24px 0 32px;
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern", "liga", "onum";
   }
-  .headline p { margin: 0; font-size: 17px; line-height: 1.5; color: #f1f5f9; }
-  .headline .num { color: var(--accent); font-weight: 700; }
-  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0 8px; }
-  .cta {
-    display: inline-block;
-    background: var(--accent);
-    color: #0f172a;
-    padding: 10px 18px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 14px;
+
+  ::selection { background: #ede8dc; color: var(--ink); }
+
+  a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: rgba(26, 26, 26, 0.3);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 200ms;
   }
-  .cta:hover { background: var(--accent-hover); text-decoration: none; }
-  .cta.sec { background: transparent; color: var(--accent); border: 1px solid var(--border); }
-  .cta.sec:hover { border-color: var(--accent); }
-  ul, ol { padding-left: 22px; }
-  li { margin: 6px 0; }
+  a:hover { text-decoration-color: var(--ink); }
+
+  code, kbd, .mono {
+    font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.87em;
+  }
   code {
-    background: var(--panel-2);
-    color: var(--code);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font: 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--rule-soft);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink-soft);
   }
+
+  /* ─── Layout scaffolding ─── */
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 96px 32px 128px;
+  }
+  @media (max-width: 640px) {
+    .container { padding: 56px 20px 96px; }
+  }
+
+  header.masthead { margin-bottom: 56px; }
+
+  .eyebrow {
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+  .eyebrow .sep { margin: 0 8px; color: var(--rule); }
+
+  h1.title {
+    font-family: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 400;
+    font-size: 64px;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    margin: 0 0 16px;
+    color: var(--ink);
+    font-optical-sizing: auto;
+  }
+  @media (max-width: 640px) { h1.title { font-size: 44px; } }
+
+  .deck {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin: 0 0 32px;
+    font-weight: 400;
+    max-width: 620px;
+  }
+  .deck .provenance {
+    color: var(--muted);
+    font-size: 15px;
+    margin-top: 12px;
+  }
+
+  hr.rule {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 40px 0;
+  }
+  hr.hair { border: none; border-top: 1px solid var(--rule-soft); margin: 32px 0; }
+
+  /* ─── Sections ─── */
+  section { margin: 72px 0; }
+  section:first-of-type { margin-top: 0; }
+
+  .section-label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-family: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0 0 20px;
+    color: var(--ink);
+  }
+  h3 {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    margin: 28px 0 8px;
+    color: var(--ink);
+  }
+  p { margin: 0 0 16px; color: var(--ink-soft); }
+  p:last-child { margin-bottom: 0; }
+
+  ul.editorial, ol.editorial {
+    padding-left: 22px;
+    margin: 16px 0;
+  }
+  ul.editorial li, ol.editorial li {
+    margin: 8px 0;
+    color: var(--ink-soft);
+    padding-left: 4px;
+  }
+  ul.editorial li::marker { color: var(--muted); }
+  ol.editorial { padding-left: 32px; }
+  ol.editorial li::marker { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 500; }
+
+  /* ─── Lede (large pull-quote) ─── */
+  .lede {
+    font-family: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 400;
+    font-size: 24px;
+    line-height: 1.4;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 40px 0;
+    padding-left: 20px;
+    border-left: 2px solid var(--ink);
+  }
+  .lede .fig {
+    font-variant-numeric: tabular-nums oldstyle-nums;
+    font-weight: 500;
+  }
+  @media (max-width: 640px) { .lede { font-size: 20px; } }
+
+  /* ─── Live links: meta table ─── */
+  .meta-block {
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 20px 0;
+    margin: 40px 0;
+  }
+  .meta-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 24px;
+    padding: 8px 0;
+    align-items: baseline;
+  }
+  .meta-row + .meta-row { border-top: 1px solid var(--rule-soft); }
+  .meta-key {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .meta-val {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+    word-break: break-all;
+  }
+  .meta-val a {
+    color: var(--ink);
+    text-decoration-color: var(--rule);
+  }
+  @media (max-width: 640px) {
+    .meta-row { grid-template-columns: 1fr; gap: 4px; }
+  }
+
+  /* ─── Ordered reproduction steps ─── */
+  ol.steps {
+    list-style: none;
+    padding: 0;
+    counter-reset: step;
+    margin: 32px 0;
+  }
+  ol.steps > li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 20px;
+    padding: 24px 0;
+    border-top: 1px solid var(--rule);
+  }
+  ol.steps > li:last-child { border-bottom: 1px solid var(--rule); }
+  ol.steps > li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding-top: 4px;
+  }
+  ol.steps .step-title {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  ol.steps p { margin: 6px 0; font-size: 15px; }
+  ol.steps pre { margin: 12px 0 0; }
+
+  /* ─── Preformatted commands ─── */
   pre {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: var(--rule-soft);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
     padding: 14px 16px;
     overflow-x: auto;
-    font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
-    color: #e2e8f0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink);
+    margin: 16px 0;
   }
-  pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
-  @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-  }
-  .card h3 { margin-top: 0; color: var(--accent); }
-  .card p, .card ul { margin: 8px 0; color: var(--text); font-size: 14px; }
-  .pill {
-    display: inline-block;
-    background: var(--pill);
-    border: 1px solid var(--border);
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  /* ─── Muted callouts (not cards) ─── */
+  .callout {
+    border-left: 2px solid var(--muted);
+    padding: 4px 0 4px 18px;
+    margin: 24px 0;
     color: var(--muted);
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    margin-right: 6px;
+    font-size: 14.5px;
+    line-height: 1.6;
   }
-  .meta {
-    background: var(--panel);
-    border-left: 3px solid var(--accent);
-    padding: 12px 16px;
-    border-radius: 6px;
-    margin: 16px 0;
-    font-size: 14px;
-  }
-  .meta strong { color: #f8fafc; }
-  .note {
-    background: #1a2b1a;
-    border-left: 3px solid var(--success);
-    padding: 12px 16px;
-    border-radius: 6px;
-    margin: 16px 0;
-    color: #d1fae5;
-    font-size: 14px;
-  }
-  .warn {
-    background: #2b1e0f;
-    border-left: 3px solid var(--warn);
-    padding: 12px 16px;
-    border-radius: 6px;
-    margin: 16px 0;
-    color: #fde68a;
-    font-size: 14px;
-  }
-  .steplist { counter-reset: step; padding-left: 0; list-style: none; }
-  .steplist li {
-    counter-increment: step;
-    padding-left: 44px;
-    position: relative;
-    margin: 14px 0;
-  }
-  .steplist li::before {
-    content: counter(step);
-    position: absolute;
-    left: 0; top: 2px;
-    width: 30px; height: 30px;
-    background: var(--accent);
-    color: #0f172a;
-    border-radius: 50%;
+  .callout strong { color: var(--ink); font-weight: 600; }
+
+  /* ─── Muted pastel tags for the Standards bibliography ─── */
+  .tags {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 14px;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    margin: 16px 0 8px;
   }
-  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
-  footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
-  footer a { margin-right: 16px; }
-  .disclaimer { color: var(--muted); font-size: 13px; margin: 24px 0; font-style: italic; }
+  .tag {
+    display: inline-block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .tag.clinical  { background: var(--clinical-bg);  color: var(--clinical); }
+  .tag.data      { background: var(--data-bg);      color: var(--data); }
+  .tag.standards { background: var(--standards-bg); color: var(--standards); }
+
+  /* ─── Colophon footer ─── */
+  footer.colophon {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.65;
+  }
+  footer.colophon .row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 24px;
+    padding: 6px 0;
+  }
+  footer.colophon .row .k {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  footer.colophon .row a { color: var(--ink-soft); }
+
+  /* ─── Fade-up entry animation ─── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+
+  /* ─── Print stylesheet: a clinical brief that prints well ─── */
+  @media print {
+    body { background: #fff; color: #000; font-size: 11pt; }
+    .container { max-width: none; padding: 0.5in; }
+    h1.title { font-size: 34pt; }
+    h2 { font-size: 18pt; page-break-after: avoid; }
+    section { page-break-inside: avoid; margin: 32pt 0; }
+    a { color: #000; text-decoration: none; }
+    a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #555; }
+    pre { border: 1pt solid #999; background: none; }
+    .reveal { opacity: 1; transform: none; }
+    footer.colophon { border-top: 1pt solid #000; }
+  }
 </style>
 </head>
 <body>
-<main>
 
-<h1>MaternalGuard</h1>
-<p class="lede">A rule-based maternal-health MCP server with a buttons-only clinician dashboard and governed FHIR write-back. Honorable Mention (top 10 of 300+), <a href="https://agents-assemble.devpost.com/">Agents Assemble — The Healthcare AI Endgame</a>, May 2026.</p>
+<article class="container">
 
-<div class="headline">
-  <p><span class="num">1 in 25</span> pregnancies develops severe preeclampsia. MaternalGuard's dashboard turns 5 tool JSON returns into a single one-click huddle — from tool call to accepted FHIR Task in ~2 seconds, with an ONC HTI-1 (b)(11) Decision Support Intervention Provenance every clinician can audit.</p>
-</div>
-
-<div class="cta-row">
-  <a class="cta" href="#run-it">Try it in 60 seconds ↓</a>
-  <a class="cta sec" href="/dsi/model-card.json">CHAI Model Card (JSON)</a>
-  <a class="cta sec" href="/dsi/model-card.md">Model Card (Markdown)</a>
-  <a class="cta sec" href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon">GitHub</a>
-</div>
-
-<div class="disclaimer">Decision support only. MaternalGuard never orders, prescribes, or contacts patients. Every FHIR write is draft-only and requires clinician sign-off. Hackathon prototype; no legal entity backs this artifact.</div>
-
-<hr>
-
-<h2>Why this exists</h2>
-<p>Roughly 800 US maternal deaths per year, ~60% preventable per the CDC. The most preventable pattern: pre-eclampsia signals evolving silently between visits (rising BP + elevated AST + falling platelets) because a clinician has to open five different chart views to see them together. MaternalGuard reads BP + AST + platelets + conditions + SDOH in one MCP tool call and drafts the MFM consult — with the ACOG citation and the Provenance every draft needs for (b)(11) compliance.</p>
-
-<div class="cols">
-  <div class="card">
-    <h3>For Prompt Opinion builders (Pawan's copilot thesis)</h3>
-    <p>MaternalGuard maps 1:1 to <em>From 1000 Clicks to Copilots</em>:</p>
-    <ul>
-      <li>Buttons-only dashboard: Approve / Reject / Activate / Dismiss. Zero typing. Server supplies the audit reason so the trail stays populated.</li>
-      <li>Optimistic toast on click (instant "Approving: &lt;task&gt;") + green banner at the top of the auto-refreshed huddle — no scrolling to confirm.</li>
-      <li>Multi-tool MCP with 6 tools + A2A wiring: <code>AssessMaternalRisk</code>, <code>InterpretLabTrends</code>, <code>ScreenSocialDeterminants</code>, <code>GenerateCarePlan</code>, <code>PredictNeonatalImpact</code>, <code>ProposeMaternalAction</code>, <code>UpdateMaternalAction</code>, <code>OpenMaternalDashboard</code>, <code>ListMaternalActions</code>.</li>
-      <li>SHARP-on-MCP headers: <code>X-FHIR-Server-URL</code>, <code>X-FHIR-Access-Token</code>, <code>X-Patient-ID</code>. Uses Prompt Opinion's FHIR Context Extension out of the box.</li>
-      <li>Soft-degradation contract: any FHIR read failure returns <code>{status:"no-op", blocksNextStep:false}</code>, never a red banner. The Priority-1 chart-writeback loop always completes.</li>
-    </ul>
+<header class="masthead reveal">
+  <div class="eyebrow">
+    MaternalGuard<span class="sep">·</span>Version 0.4.0<span class="sep">·</span>Published 2026-07-27
   </div>
+  <h1 class="title">MaternalGuard</h1>
+  <p class="deck">A rule-based maternal-health MCP server with a buttons-only clinician dashboard and governed FHIR write-back.
+    <span class="provenance">Honorable Mention, top 10 of 300+ &mdash;
+      <a href="https://agents-assemble.devpost.com/">Agents Assemble: The Healthcare AI Endgame</a>, May 2026. Built on
+      <a href="https://app.promptopinion.ai">Prompt Opinion</a>.</span>
+  </p>
+</header>
 
-  <div class="card">
-    <h3>For (b)(11)-certified stacks like Darena Health (Magnus)</h3>
-    <p>Every governed write emits an <a href="https://build.fhir.org/ig/HL7/aitransparency-ig/">HL7 AI Transparency on FHIR</a> Provenance:</p>
-    <ul>
-      <li><code>meta.profile[0] = AI-Provenance</code>, <code>meta.security[0].code = AIAST</code>.</li>
-      <li>Contained <code>AI-Device</code> (<code>aiKind = rule-based</code>, DSI identifier <code>mg-dsi-v0.4.0</code>) linked to a contained <code>AI-ModelCard</code> DocumentReference.</li>
-      <li>The DocumentReference points at the <a href="/dsi/model-card.json">live CHAI Applied Model Card JSON</a> and <a href="/dsi/model-card.md">Markdown</a> served from this same host. No 404s on ONC (b)(11) source-attribute follow.</li>
-      <li>All 13 <em>45 CFR 170.315(b)(11)(iv)(A)</em> Evidence-Based source attributes carried inline on every Provenance for viewers that don't follow references.</li>
-      <li>USCDI v3.1 alignment, HEDIS PPC (NQF #1517) via CPT-II 0500F/0503F on the drafted Task's <code>reasonCode</code>.</li>
-    </ul>
+<div class="lede reveal">
+  <span class="fig">1 in 25</span> pregnancies develops severe preeclampsia. MaternalGuard's dashboard turns five tool JSON returns into a single one-click huddle&mdash;from tool call to accepted FHIR Task in about two seconds, with an ONC HTI-1 <span class="mono">(b)(11)</span> Decision Support Intervention Provenance every clinician can audit.
+</div>
+
+<section class="reveal" id="live">
+  <div class="section-label">Live endpoints</div>
+  <div class="meta-block">
+    <div class="meta-row"><div class="meta-key">MCP server</div><div class="meta-val"><a href="/mcp">maternalguard.jonathanandrei.com/mcp</a></div></div>
+    <div class="meta-row"><div class="meta-key">Reproduction</div><div class="meta-val"><a href="/guide">maternalguard.jonathanandrei.com/guide</a></div></div>
+    <div class="meta-row"><div class="meta-key">Model Card (JSON)</div><div class="meta-val"><a href="/dsi/model-card.json">maternalguard.jonathanandrei.com/dsi/model-card.json</a></div></div>
+    <div class="meta-row"><div class="meta-key">Model Card (MD)</div><div class="meta-val"><a href="/dsi/model-card.md">maternalguard.jonathanandrei.com/dsi/model-card.md</a></div></div>
+    <div class="meta-row"><div class="meta-key">Source</div><div class="meta-val"><a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon">github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon</a></div></div>
+    <div class="meta-row"><div class="meta-key">Contact</div><div class="meta-val"><a href="mailto:jon_andrei04@hotmail.com">jon_andrei04@hotmail.com</a></div></div>
   </div>
-</div>
+</section>
 
-<hr>
+<section class="reveal" id="why">
+  <div class="section-label">Why it exists</div>
+  <h2>The most preventable pattern in US maternal care is silent between visits.</h2>
+  <p>Roughly 800 US maternal deaths per year, sixty percent of which the CDC classifies as preventable. The largest single class of preventable death is preeclampsia signals evolving between visits&mdash;rising blood pressure, elevated AST, falling platelets, new proteinuria&mdash;because a clinician has to open five different chart views to see them together. MaternalGuard reads BP, AST, platelets, conditions, and SDOH in one MCP tool call and drafts the MFM consult, with the ACOG citation and the Provenance every draft needs for <span class="mono">(b)(11)</span> compliance.</p>
+</section>
 
-<h2 id="run-it">Try it in 60 seconds</h2>
+<hr class="rule">
 
-<p>MaternalGuard is deployed as a Prompt Opinion MCP server. To reproduce the demo:</p>
+<section class="reveal" id="pawan">
+  <div class="section-label">Part I &mdash; for Prompt Opinion builders</div>
+  <h2>The buttons-only huddle Pawan Jindal keeps writing about.</h2>
+  <p>From <em>1000 Clicks to Copilots</em>: the fewer keystrokes between a clinical intent and a chart write, the more useful the copilot. MaternalGuard's dashboard is designed for the huddle table, not the chart form.</p>
+  <ul class="editorial">
+    <li><strong>Approve, Reject, Activate, Dismiss.</strong> Zero typing. Server writes the default audit reason so the trail stays populated without asking anyone to type.</li>
+    <li><strong>Instant optimistic toast on click:</strong> <em>Approving: &lt;task&gt;</em> fires before the FHIR round-trip. The one-to-two-second write completes, then a green <em>Approved</em> banner renders at the top of the auto-refreshed huddle. No scrolling to confirm.</li>
+    <li><strong>Ten MCP tools with A2A wiring:</strong> <code>AssessMaternalRisk</code>, <code>InterpretLabTrends</code>, <code>ScreenSocialDeterminants</code>, <code>GenerateCarePlan</code>, <code>PredictNeonatalImpact</code>, <code>ProposeMaternalAction</code>, <code>UpdateMaternalAction</code>, <code>OpenMaternalDashboard</code>, <code>ListMaternalActions</code>, <code>MaternalPanelScan</code>.</li>
+    <li><strong>Every tool schema is stringify-safe.</strong> <code>z.union([native, string])</code> plus server-side coercion, so upstream agents that occasionally stringify arguments never <code>-32602</code> the call.</li>
+    <li><strong>SHARP-on-MCP:</strong> consumes <code>X-FHIR-Server-URL</code>, <code>X-FHIR-Access-Token</code>, and <code>X-Patient-ID</code> straight from Prompt Opinion's FHIR Context Extension.</li>
+    <li><strong>Soft-degradation contract:</strong> any FHIR read failure returns <code>{status: "no-op", blocksNextStep: false}</code>&mdash;never a red banner. The Priority-1 chart-writeback loop always completes.</li>
+  </ul>
+</section>
 
-<ol class="steplist">
-  <li>
-    <strong>Register the MCP server in your Prompt Opinion workspace.</strong>
-    <p>Launchpad → Configuration → MCP Servers → New. Endpoint: <code>https://maternalguard.jonathanandrei.com/mcp</code>. Transport: Streamable HTTP. Auth: API Key, header <code>X-API-Key</code> — <a href="mailto:jon_andrei04@hotmail.com">contact the publisher</a> for a key. Enable FHIR Context.</p>
-  </li>
-  <li>
-    <strong>Load Maria Santos as the patient.</strong>
-    <p>Import <a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon/blob/main/test-cases/patient-maria-santos-bundle.json"><code>patient-maria-santos-bundle.json</code></a> from the repo via Patient Data → Import. Maria is a 28y G2P1 at 32 weeks with evolving HELLP: rising BP (118 → 148 systolic), AST 54 U/L (above pregnancy ceiling), platelets 141 → 100 K/uL, spot proteinuria.</p>
-  </li>
-  <li>
-    <strong>Open the Prenatal Visit Prep agent → New chat → select Maria → send:</strong>
-    <pre><code>Draft the appropriate follow-up actions for the current patient.</code></pre>
-    <p>The agent chains 5 data tools once each, then <code>ProposeMaternalAction</code> once per RED/YELLOW recommendation, then <code>OpenMaternalDashboard</code>. All in ~3–5 seconds. No red banners. The dashboard renders inline with Approve/Reject buttons per task.</p>
-  </li>
-  <li>
-    <strong>Click Approve on the top task.</strong>
-    <p>You'll see (a) an instant blue "Approving: &lt;task&gt;" toast, (b) a ~1–2s FHIR round-trip, (c) the huddle re-renders with a green "✓ Approved: &lt;task&gt;" banner at the top. The item disappears from Draft tasks and appears in Recently actioned with an <span class="pill" style="color:#4ade80">accepted</span> badge.</p>
-  </li>
-  <li>
-    <strong>Verify the FHIR Task and Provenance landed.</strong>
-    <p>The <a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon/tree/main/test-cases/postman">Postman collection</a> in the repo has pre-wired requests. Import it, paste your workspace bearer, run <code>2. Tasks → GET Task by ID</code> and <code>4. Provenance → GET Provenance targeting a Task</code>. The Provenance carries the AI-Transparency profile, the AIAST security label, the contained AI-Device + AI-ModelCard, and the 13 source-attribute inline summary.</p>
-  </li>
-</ol>
+<hr class="rule">
 
-<div class="note">
-  <strong>Silent success is the point.</strong> The most common state after Approve is a Provenance in the store and a task moved to <code>accepted</code>. If the clinician clicks Reject or Dismiss, the audit reason defaults to <em>"Rejected by clinician during huddle review"</em> so the trail is populated without asking anyone to type.
-</div>
+<section class="reveal" id="magnus">
+  <div class="section-label">Part II &mdash; for (b)(11)-certified stacks</div>
+  <h2>Every governed write ships an AI Transparency Provenance you can audit.</h2>
+  <p>For a certified body module like Darena Health / MeldRx, the interesting artifact is not the tool call. It is the audit trail behind every chart write. MaternalGuard emits the shape below on every Task and every Flag transition.</p>
+  <ul class="editorial">
+    <li><span class="mono">meta.profile[0]</span> = <code>AI-Provenance</code> (HL7 AI Transparency on FHIR IG v1.0.0-ballot, DSTU January 2026).</li>
+    <li><span class="mono">meta.security[0].code</span> = <code>AIAST</code> (Artificial Intelligence Asserted, HL7 v3 ObservationValue).</li>
+    <li>Contained <code>AI-Device</code> with <code>aiKind = rule-based</code> and the DSI identifier <code>mg-dsi-v0.4.0</code>, linked to a contained <code>AI-ModelCard</code> <code>DocumentReference</code>.</li>
+    <li>The <code>DocumentReference</code> points at a resolvable HTTPS URL, not a placeholder. A reviewer clicking the source attribute lands on <a href="/dsi/model-card.json">the live CHAI Applied Model Card JSON</a> or its <a href="/dsi/model-card.md">Markdown companion</a>, not a 404.</li>
+    <li>All thirteen <a href="https://www.federalregister.gov/documents/2024/01/09/2023-28857/health-data-technology-and-interoperability-certification-program-updates-algorithm-transparency-and">45 CFR 170.315(b)(11)(iv)(A)</a> Evidence-Based source attributes are ALSO carried inline on every Provenance summary extension, for viewers that do not follow references.</li>
+    <li>USCDI v3.1 alignment. HEDIS Prenatal & Postpartum Care (NQF #1517) via CPT Category II 0500F/0503F auto-tagged on <code>Task.reasonCode</code>.</li>
+    <li>DSI version bumps land in the same commit that touches the JSON, the Markdown, and the <code>MATERNALGUARD_DSI_VERSION</code> constant. That is the "ongoing maintenance" surface the ONC rule expects to see used.</li>
+  </ul>
+</section>
 
-<hr>
+<hr class="rule">
 
-<h2>Path to production</h2>
-<p>Prompt Opinion's own tagline is <em>"Healthcare AI is stuck in pilots. That's not an agent problem. That's an assembly problem."</em> Three concrete next steps to move MaternalGuard out of pilot:</p>
-<ul>
-  <li><strong>CDS Hooks bridge alongside MCP.</strong> Darena Health / MeldRx / Epic App Orchard workspaces launch clinical apps via SMART-on-FHIR + CDS Hooks. MaternalGuard's tools port to CDS Hooks in ~1 day of work; the tool logic and Provenance shape stay identical. The same DSI identifier ships against every EHR that speaks SMART.</li>
-  <li><strong>Prospective sensitivity/specificity study against ACOG-benchmarked gold-standard patients.</strong> The current 61-case corpus is balanced-but-synthetic. A residency program with an IRB and 200–500 real prenatal charts would move MaternalGuard from Evidence-Based DSI to something with a real ROC curve.</li>
-  <li><strong>Design partnership with an OB residency or MFM service.</strong> The buttons-only huddle needs 8–12 weeks in real morning-huddle use to earn its "1 in 25 severe preeclampsia" claim as a measured outcome instead of an epidemiology hook.</li>
-</ul>
-
-<div class="meta">
-  <strong>Portability:</strong> MaternalGuard reads and writes standard FHIR R4 with US-Core-Patient profiles. Point <code>X-FHIR-Server-URL</code> at a MeldRx workspace, Epic App Orchard sandbox, Cerner code sandbox, or a HAPI FHIR store — zero code change. The DSI identifier and CHAI Model Card travel with the app across all four.
-</div>
-
-<hr>
-
-<h2>Standards alignment</h2>
-<div class="cols">
-  <div class="card">
-    <h3>Clinical</h3>
-    <p><span class="pill">ACOG PB #190 GDM</span> <span class="pill">PB #201 Pregestational DM</span> <span class="pill">PB #203 Chronic HTN</span> <span class="pill">PB #222 Preeclampsia</span> <span class="pill">PB #229 Antepartum Surveillance</span> <span class="pill">PB #234 Antenatal Steroids</span> <span class="pill">Committee Opinion #706 AMA</span> <span class="pill">IADPSG GDM criteria</span></p>
+<section class="reveal" id="run-it">
+  <div class="section-label">Part III &mdash; try it</div>
+  <h2>Reproduce the demo in about a minute.</h2>
+  <p>MaternalGuard is deployed as a Prompt Opinion MCP server. The reproduction path assumes you already have a workspace with a FHIR context.</p>
+  <ol class="steps">
+    <li>
+      <div>
+        <div class="step-title">Register the MCP server in your workspace.</div>
+        <p>Launchpad &rarr; Configuration &rarr; MCP Servers &rarr; New. Endpoint <code>https://maternalguard.jonathanandrei.com/mcp</code>, transport Streamable HTTP, auth API Key on header <code>X-API-Key</code>. <a href="mailto:jon_andrei04@hotmail.com">Contact for a key.</a> Enable FHIR Context.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Load Maria Santos as the patient.</div>
+        <p>Import <a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon/blob/main/test-cases/patient-maria-santos-bundle.json"><code>patient-maria-santos-bundle.json</code></a> via Patient Data &rarr; Import. She is a 28-year-old G2P1 at 32 weeks with evolving HELLP: rising BP (118 &rarr; 148 systolic), AST 54 U/L, platelets 141 &rarr; 100 K/uL, spot proteinuria.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Open the Prenatal Visit Prep agent and send this prompt.</div>
+        <pre><code>Draft the appropriate follow-up actions for the current patient.</code></pre>
+        <p>The agent chains five data tools once each, then <code>ProposeMaternalAction</code> once per RED / YELLOW recommendation, then <code>OpenMaternalDashboard</code>. Three to five seconds. No red banners. The dashboard renders inline with Approve / Reject buttons per task.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Click Approve on the top task.</div>
+        <p>Instant blue <em>Approving: &lt;task&gt;</em> toast, then a one-to-two-second FHIR round-trip, then a green banner at the top of the refreshed huddle. The task moves from Draft to Recently actioned with the <code>accepted</code> badge.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Verify the FHIR Task and Provenance landed.</div>
+        <p>The <a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon/tree/main/test-cases/postman">Postman collection</a> in the repo has pre-wired requests. Import it, paste your workspace bearer, run <em>Tasks &rarr; GET Task by ID</em> and <em>Provenance &rarr; GET Provenance targeting a Task</em>. The Provenance carries the AI-Transparency profile, the AIAST security label, the contained AI-Device and AI-ModelCard, and the thirteen source-attribute inline summary.</p>
+      </div>
+    </li>
+  </ol>
+  <div class="callout">
+    <strong>Silent success is the point.</strong> The most common state after Approve is a Provenance in the store and a task moved to <code>accepted</code>. If a clinician clicks Reject or Dismiss, the audit reason defaults to <em>"Rejected by clinician during huddle review"</em> so the trail is populated without asking anyone to type.
   </div>
-  <div class="card">
-    <h3>Regulatory + interop</h3>
-    <p><span class="pill">ONC HTI-1 (b)(11)(iv)(A)</span> <span class="pill">HL7 AI Transparency on FHIR</span> <span class="pill">CHAI Applied Model Card</span> <span class="pill">USCDI v3.1</span> <span class="pill">US Core Patient</span> <span class="pill">HEDIS PPC NQF #1517</span> <span class="pill">CPT-II 0500F/0503F</span> <span class="pill">FHIR R4</span> <span class="pill">SMART-on-FHIR-ready</span></p>
-  </div>
-</div>
+</section>
 
-<footer>
-  <a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon">GitHub</a>
-  <a href="/dsi/model-card.json">Model Card (JSON)</a>
-  <a href="/dsi/model-card.md">Model Card (MD)</a>
-  <a href="mailto:jon_andrei04@hotmail.com">Contact publisher</a>
-  <div style="margin-top: 16px;">MaternalGuard v2.0. Hackathon prototype; no legal entity. Not for clinical use without a covered-entity sponsor.</div>
+<hr class="rule">
+
+<section class="reveal" id="production">
+  <div class="section-label">Part IV &mdash; path to production</div>
+  <h2>Three next steps out of pilot.</h2>
+  <p>Prompt Opinion's own framing is that healthcare AI is stuck in pilots and the issue is assembly, not agents. What follows are the three shortest steps that would move MaternalGuard from prototype to something a covered entity could actually turn on.</p>
+  <ol class="editorial">
+    <li><strong>CDS Hooks bridge alongside MCP.</strong> Tools port to CDS Hooks in about a day; tool logic and Provenance shape stay identical. Ships against every SMART-on-FHIR EHR: MeldRx, Epic App Orchard, Cerner code sandbox.</li>
+    <li><strong>Prospective sensitivity/specificity study</strong> against an ACOG-benchmarked cohort of 200 to 500 real prenatal charts. Moves the 61-case corpus false-positive claim (under 1%) into a real ROC curve.</li>
+    <li><strong>Design partnership with an OB residency or MFM service</strong> for eight to twelve weeks in real morning-huddle use. Turns the "1 in 25 severe preeclampsia" hook into a measured outcome instead of an epidemiology reference.</li>
+  </ol>
+  <div class="callout">
+    <strong>Portability.</strong> MaternalGuard reads and writes standard FHIR R4 with US Core Patient profiles. Point <code>X-FHIR-Server-URL</code> at MeldRx, Epic App Orchard, or a HAPI FHIR store &mdash; zero code change. The DSI identifier and CHAI Model Card travel with the app.
+  </div>
+</section>
+
+<hr class="rule">
+
+<section class="reveal" id="standards">
+  <div class="section-label">Part V &mdash; standards</div>
+  <h2>What ships in every write.</h2>
+  <h3>Clinical guideline citations</h3>
+  <div class="tags">
+    <span class="tag clinical">ACOG PB #190 GDM</span>
+    <span class="tag clinical">PB #201 Pregestational DM</span>
+    <span class="tag clinical">PB #203 Chronic HTN</span>
+    <span class="tag clinical">PB #222 Preeclampsia</span>
+    <span class="tag clinical">PB #229 Antepartum Surveillance</span>
+    <span class="tag clinical">PB #234 Antenatal Steroids</span>
+    <span class="tag clinical">Committee Opinion #706 AMA</span>
+    <span class="tag clinical">IADPSG GDM criteria</span>
+  </div>
+  <h3>Regulatory &amp; interoperability</h3>
+  <div class="tags">
+    <span class="tag data">ONC HTI-1 (b)(11)(iv)(A)</span>
+    <span class="tag data">HL7 AI Transparency on FHIR</span>
+    <span class="tag data">CHAI Applied Model Card</span>
+    <span class="tag standards">USCDI v3.1</span>
+    <span class="tag standards">US Core Patient</span>
+    <span class="tag standards">HEDIS PPC NQF #1517</span>
+    <span class="tag standards">CPT-II 0500F / 0503F</span>
+    <span class="tag standards">FHIR R4</span>
+    <span class="tag standards">SMART-on-FHIR-ready</span>
+  </div>
+</section>
+
+<footer class="colophon reveal">
+  <div class="row"><span class="k">Published</span><span>MaternalGuard v2.0.0, DSI v0.4.0 &mdash; 2026-07-27</span></div>
+  <div class="row"><span class="k">Publisher</span><span>MaternalGuard hackathon team &mdash; no legal entity backs this artifact</span></div>
+  <div class="row"><span class="k">Model Card</span><span><a href="/dsi/model-card.json">JSON</a> &nbsp;&middot;&nbsp; <a href="/dsi/model-card.md">Markdown</a></span></div>
+  <div class="row"><span class="k">Source</span><span><a href="https://github.com/JonathanSolvesProblems/maternal-guard-prompt-opinion-hackathon">GitHub</a></span></div>
+  <div class="row"><span class="k">Contact</span><span><a href="mailto:jon_andrei04@hotmail.com">jon_andrei04@hotmail.com</a></span></div>
+  <div class="row"><span class="k">Notice</span><span>Decision support only. Prototype. Not for clinical use without a covered-entity sponsor. Never orders, prescribes, or contacts patients.</span></div>
 </footer>
 
-</main>
+</article>
+
+<script>
+  (function () {
+    if (!('IntersectionObserver' in window)) {
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+  })();
+</script>
+
 </body>
 </html>
