@@ -138,6 +138,85 @@ app.get("/dsi/model-card.md", (_, res) => {
     .sendFile(path.join(STATIC_ROOT, "dsi", "model-card.md"));
 });
 
+// /admin/bearer — production-safe replacement for the /debug/bearer
+// endpoint. Same UI (dark page with select-all textarea + Copy button)
+// but the gate is the existing MCP_API_KEY instead of the DEBUG_ARGS
+// env flag. This avoids the previous "flip env, restart, grab, flip
+// back, restart" workflow whenever the Prompt Opinion workspace session
+// rotates its bearer (roughly hourly).
+//
+// Auth: either header X-API-Key: <MCP_API_KEY>, OR query ?key=<MCP_API_KEY>
+// so the bookmark https://<host>/admin/bearer?key=<MCP_API_KEY> works.
+// Returns 404 (not 401) on wrong/missing key so the endpoint is not
+// even discoverable to a random scanner.
+//
+// Blast radius: the bearer is a workspace-scoped Supabase JWT that
+// expires when Prompt Opinion refreshes the session (~1 hour). An
+// attacker who obtained BOTH the URL and the MCP_API_KEY could grab
+// short-lived FHIR access on this workspace. Rotating MCP_API_KEY
+// rotates that surface. Acceptable for a solo-developer hackathon
+// deployment; NOT for a multi-tenant production.
+app.get("/admin/bearer", (req, res) => {
+  const expectedApiKey = process.env["MCP_API_KEY"];
+  const providedApiKey =
+    req.headers["x-api-key"] ??
+    (typeof req.query["key"] === "string" ? req.query["key"] : undefined);
+  if (!expectedApiKey || providedApiKey !== expectedApiKey) {
+    return res.status(404).send("Not found");
+  }
+  const bearer = LATEST_BEARER;
+  const wantsJson = req.headers["accept"]?.toString().includes("application/json");
+  if (!bearer) {
+    if (wantsJson) {
+      return res.status(200).json({ bearer: null, note: "no bearer captured yet; trigger any Prompt Opinion tool call first" });
+    }
+    return res
+      .status(200)
+      .set("content-type", "text/html; charset=utf-8")
+      .send(
+        `<!doctype html><meta charset="utf-8"><body style="font:14px/1.5 system-ui;max-width:640px;margin:40px auto;padding:0 16px;color:#111">
+        <h2>No bearer captured yet</h2>
+        <p>Trigger any Prompt Opinion tool call first (send any prompt in a chat where MaternalGuard is registered), then reload.</p>
+        </body>`,
+      );
+  }
+  if (wantsJson) {
+    return res.status(200).json({ bearer, length: bearer.length });
+  }
+  const safe = bearer.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!),
+  );
+  const html = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>MaternalGuard bearer</title><style>
+html,body{margin:0;padding:0;background:#0f172a;color:#e2e8f0;font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+main{max-width:900px;margin:0 auto;padding:40px 24px}h1{margin:0 0 8px;font-size:20px;color:#f8fafc}
+p{margin:0 0 20px;color:#94a3b8}
+textarea{width:100%;min-height:200px;background:#020617;color:#22d3ee;border:1px solid #334155;border-radius:8px;padding:12px;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;box-sizing:border-box;white-space:pre;overflow:auto;word-break:break-all}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+button{background:#22d3ee;color:#0f172a;border:none;padding:10px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px}
+button:hover{background:#67e8f9}button.sec{background:#334155;color:#e2e8f0}
+.ok{color:#4ade80;font-weight:600;margin-left:8px}
+.meta{margin-top:24px;padding:12px 16px;background:#1e293b;border-radius:8px;border-left:3px solid #22d3ee;font-size:13px}
+code{background:#020617;padding:2px 6px;border-radius:3px;color:#22d3ee}
+</style></head><body><main>
+<h1>Current FHIR bearer for Postman</h1>
+<p>Paste into the <code>bearerToken</code> variable in the MaternalGuard Postman collection.</p>
+<textarea id="tok" readonly onclick="this.select()">${safe}</textarea>
+<div class="row">
+<button id="copy">Copy to clipboard</button>
+<button class="sec" onclick="location.reload()">Refresh (grab newer)</button>
+<span id="msg" class="ok" style="display:none">Copied</span>
+</div>
+<div class="meta"><div><strong>Length:</strong> ${bearer.length} chars</div>
+<div><strong>Starts:</strong> <code>${safe.slice(0, 20)}...</code></div>
+<div><strong>Ends:</strong> <code>...${safe.slice(-20)}</code></div>
+<div style="margin-top:8px;color:#94a3b8">Token rotates on Prompt Opinion session refresh. If Postman 401s, reload this page.</div></div>
+</main><script>
+document.getElementById('copy').onclick=async()=>{const ta=document.getElementById('tok');try{await navigator.clipboard.writeText(ta.value)}catch{ta.select();document.execCommand('copy')}const m=document.getElementById('msg');m.style.display='inline';setTimeout(()=>{m.style.display='none'},1500)};
+</script></body></html>`;
+  res.set("content-type", "text/html; charset=utf-8").send(html);
+});
+
 app.get("/debug/bearer", (_, res) => {
   // Local-only helper for grabbing the current FHIR bearer JWT for the
   // Postman collection. Rendered as a browser page with a Copy button
