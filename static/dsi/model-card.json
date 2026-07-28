@@ -61,7 +61,7 @@
     "fundingSource": "Unfunded hackathon submission.",
     "releaseDate": "2026-05-15",
     "version": "0.4.0",
-    "biasAssessment": "No ML training data. Rule-based coverage tested against a 61-case corpus balanced across race, ethnicity, language, sex, and age; false-positive rate < 1%. Rules operate on structured FHIR fields (ICD-10, LOINC) only; no free-text scoring, so no demographic-inferring feature can influence output. Age and gender guards are applied only for the clinical safety of the 'advanced maternal age' flag (>=35, female-only), which is a clinical necessity for the flag's meaning per ACOG Committee Opinion #706 — not a demographic profiling surface.",
+    "biasAssessment": "No ML training data. Rule-based coverage tested against a 61-case corpus balanced across race, ethnicity, language, sex, and age; false-positive rate < 1%. Rules operate on structured FHIR fields (ICD-10, LOINC) only; no free-text scoring, so no demographic-inferring feature can influence output. Age and gender guards are applied only for the clinical safety of the 'advanced maternal age' flag (>=35, female-only), which is a clinical necessity for the flag's meaning per ACOG Committee Opinion #706, not a demographic profiling surface.",
     "warningsLimitations": "Draft-only writer: every Task ships with status=requested and every Flag with status=inactive; both require explicit clinician approval before activation. Never asserts a diagnosis. Never orders labs. Never contacts patients. Provenance chain and MaternalGuard's SHA-256 append-only audit log are the tamper-evidence layer. Not validated against a live prospective cohort. Not a replacement for MFM consult in HELLP-suspicion cases.",
     "regulatoryFramework": [
       "45 CFR 170.315(b)(11)(iv)(A), Evidence-Based DSI source attributes",
@@ -75,7 +75,7 @@
     "autonomousActions": [],
     "overrideMechanism": "Clinician reviews each drafted Task/Flag on the Morning Huddle dashboard and clicks Approve / Reject / Activate / Dismiss. Every state transition is Provenance-audited and appears in Recently actioned. Server-side transition guards refuse illegal transitions (e.g., re-approving an already-accepted Task).",
     "failureModes": [
-      "FHIR read failure on a lab type → tool soft-degrades with status:'no-op', blocksNextStep:false — never blocks downstream tools.",
+      "FHIR read failure on a lab type: tool soft-degrades with status:'no-op', blocksNextStep:false. Never blocks downstream tools.",
       "Stringified tool arguments from upstream agent → tool schema unions accept both shapes and coerce server-side; no -32602 seen since fix.",
       "Duplicate draft Flags from parallel ProposeMaternalAction calls → server-side dedup by code.text on the same patient before FHIR create."
     ]

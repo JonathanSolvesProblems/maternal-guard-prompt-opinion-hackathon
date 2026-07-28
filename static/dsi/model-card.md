@@ -1,4 +1,4 @@
-# MaternalGuard — CHAI Applied Model Card
+# MaternalGuard: CHAI Applied Model Card
 
 **Version:** 0.4.0
 **Published:** 2026-05-15
@@ -107,13 +107,13 @@ Every one of these is ALSO carried inline on every Provenance the server writes,
 
 ## Change log
 
-**0.4.0 — 2026-07-27**
+**0.4.0 (2026-07-27)**
 - Published Model Card to a resolvable HTTPS URL (was `maternalguard.local` placeholder).
 - Documented stringified-argument fixes across all 5 data tools.
 - Documented dashboard optimistic-toast + inline confirmation banner patterns.
 - Added CHAI Applied Model Card top-level sections (safetyAndOversight, fairnessAndEquity, provenanceAndTraceability, bibliography, changeLog).
 
-**0.3.1 — 2026-05-15**
+**0.3.1 (2026-05-15)**
 - Initial hackathon submission version.
 - 13 (b)(11)(iv)(A) source attributes carried inline on every Provenance summary extension.
 

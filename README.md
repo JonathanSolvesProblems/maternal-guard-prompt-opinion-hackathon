@@ -4,9 +4,9 @@
 
 # MaternalGuard
 
-**1 in 25 pregnancies develops severe preeclampsia. MaternalGuard's dashboard turns 5 tool JSON returns into a single one-click huddle — from tool call to accepted FHIR Task in ~2 seconds, with an ONC HTI-1 (b)(11) Decision Support Intervention Provenance every clinician can audit.**
+**1 in 25 pregnancies develops severe preeclampsia. MaternalGuard's dashboard turns 5 tool JSON returns into a single one-click huddle. Tool call to accepted FHIR Task in ~2 seconds, with an ONC HTI-1 (b)(11) Decision Support Intervention Provenance every clinician can audit.**
 
-Honorable Mention (top 10 of 300+), [Agents Assemble — The Healthcare AI Endgame](https://agents-assemble.devpost.com/), May 2026. Built on [Prompt Opinion](https://app.promptopinion.ai).
+Honorable Mention (top 10 of 300+), [Agents Assemble: The Healthcare AI Endgame](https://agents-assemble.devpost.com/), May 2026. Built on [Prompt Opinion](https://app.promptopinion.ai).
 
 - **Live:** https://maternalguard.jonathanandrei.com/mcp
 - **Reviewer reproduction guide:** https://maternalguard.jonathanandrei.com/guide
@@ -20,9 +20,9 @@ Honorable Mention (top 10 of 300+), [Agents Assemble — The Healthcare AI Endga
 - **Optimistic UI:** instant "Approving: &lt;task&gt;" toast on click; ~1-2s FHIR round-trip; green "✓ Approved" banner at the top of the auto-refreshed huddle. No scrolling to confirm.
 - **Multi-tool MCP with A2A:** `AssessMaternalRisk`, `InterpretLabTrends`, `ScreenSocialDeterminants`, `GenerateCarePlan`, `PredictNeonatalImpact`, `ProposeMaternalAction`, `UpdateMaternalAction`, `OpenMaternalDashboard`, `ListMaternalActions`, `MaternalPanelScan`. Every tool schema accepts stringified args (`z.union([native, string])` + server-side coercion) so upstream agent quirks never -32602 the call.
 - **SHARP-on-MCP + FHIR Context Extension:** consumes `X-FHIR-Server-URL`, `X-FHIR-Access-Token`, `X-Patient-ID` out of the box. No custom auth code; drops into any Prompt Opinion workspace with FHIR Context enabled.
-- **Soft-degradation contract:** any FHIR read failure returns `{status:"no-op", blocksNextStep:false}` — never a red banner in chat. The Priority-1 chart-writeback loop always completes.
+- **Soft-degradation contract:** any FHIR read failure returns `{status:"no-op", blocksNextStep:false}`. Never a red banner in chat. The Priority-1 chart-writeback loop always completes.
 
-### The audit surface — for (b)(11)-certified stacks
+### The audit surface, for (b)(11)-certified stacks
 
 - **Every governed write emits an HL7 AI Transparency on FHIR Provenance.** `meta.profile[0] = AI-Provenance`, `meta.security[0].code = AIAST`.
 - **Contained `AI-Device` (`aiKind = rule-based`) linked to a contained `AI-ModelCard` DocumentReference** pointing at a live, resolvable [CHAI Applied Model Card JSON](https://maternalguard.jonathanandrei.com/dsi/model-card.json). No 404 when a reviewer follows the (b)(11) source-attribute reference.
@@ -38,11 +38,11 @@ Prompt Opinion's own tagline is *"Healthcare AI is stuck in pilots. That's not a
 2. **Prospective sensitivity/specificity study** against an ACOG-benchmarked cohort of 200-500 real prenatal charts. Moves the 61-case corpus false-positive claim (< 1%) into a real ROC curve.
 3. **Design partnership with an OB residency or MFM service** for 8-12 weeks in real morning-huddle use. Turns the "1 in 25 severe preeclampsia" hook into a measured outcome.
 
-**Portability:** reads and writes standard FHIR R4 with US-Core-Patient profiles. Point `X-FHIR-Server-URL` at MeldRx / Epic App Orchard / a HAPI FHIR store — zero code change. DSI identifier and CHAI Model Card travel with the app.
+**Portability:** reads and writes standard FHIR R4 with US-Core-Patient profiles. Point `X-FHIR-Server-URL` at MeldRx / Epic App Orchard / a HAPI FHIR store. Zero code change. DSI identifier and CHAI Model Card travel with the app.
 
 ---
 
-**Why MCP over RAG.** RAG stuffs a static blob of "what the model might need" into a prompt. MCP lets the LLM ask precisely what it needs, when it needs it. For a maternal-health workflow that means today's AST vs. two weeks ago, this patient's specific urine protein history, and the current pregnancy Condition — not a corpus dump.
+**Why MCP over RAG.** RAG stuffs a static blob of "what the model might need" into a prompt. MCP lets the LLM ask precisely what it needs, when it needs it. For a maternal-health workflow that means today's AST vs. two weeks ago, this patient's specific urine protein history, and the current pregnancy Condition, not a corpus dump.
 
 MaternalGuard reads FHIR data (demographics, conditions, vitals, labs, medications, social history, care plans) from a FHIR R4 server via SHARP-on-MCP headers, applies a deterministic urgency classifier on the server side, and returns decision-ready structured context for the platform's AI to reason over. It does not call any LLM directly. All reasoning happens in Prompt Opinion.
 
