@@ -4,7 +4,7 @@
   "cardVersion": "1.0",
   "publisher": {
     "name": "MaternalGuard hackathon team",
-    "contact": "jon_andrei04@hotmail.com",
+    "contact": "jonathan@jonathanandrei.com",
     "legalEntity": null,
     "note": "Hackathon prototype; no legal entity backs this artifact. Intended for research and demonstration, not clinical deployment without a covered-entity sponsor."
   },
@@ -57,7 +57,7 @@
     "cautionedOutOfScopeUse": "Not for pediatric obstetrics, not for pregnancy loss / fetal demise workflows without human triage, not for acute L&D decisioning.",
     "algorithmMethodology": "rule-based",
     "underlyingKnowledgeSource": "ICD-10-CM Z3A/Z34 code families; ACOG Practice Bulletins (PB #190 GDM, PB #201 Pregestational DM, PB #203 Chronic HTN, PB #222 Preeclampsia, PB #229 Antepartum Fetal Surveillance, PB #234 Antenatal Corticosteroid Therapy); IADPSG criteria for GDM; NCQA HEDIS PPC (NQF #1517); LOINC-coded observations.",
-    "developer": "MaternalGuard hackathon team (jon_andrei04@hotmail.com); prototype only, no legal entity.",
+    "developer": "MaternalGuard hackathon team (jonathan@jonathanandrei.com); prototype only, no legal entity.",
     "fundingSource": "Unfunded hackathon submission.",
     "releaseDate": "2026-05-15",
     "version": "0.4.0",

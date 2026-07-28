@@ -13,7 +13,7 @@ This is the human-readable companion to the JSON model card that every MaternalG
 ## Publisher
 
 MaternalGuard hackathon team.
-Contact: `jon_andrei04@hotmail.com`.
+Contact: `jonathan@jonathanandrei.com`.
 **No legal entity backs this artifact.** This is a hackathon prototype. Use in research and demonstration only, not clinical deployment without a covered-entity sponsor.
 
 ---

@@ -411,7 +411,7 @@ export function buildProvenance(input: ProvenanceInput): fhirR4.Provenance {
       {
         url: "developer",
         valueString:
-          "MaternalGuard hackathon team (jon_andrei04@hotmail.com); prototype only, no legal entity.",
+          "MaternalGuard hackathon team (jonathan@jonathanandrei.com); prototype only, no legal entity.",
       },
       { url: "fundingSource", valueString: "Unfunded hackathon submission." },
       { url: "releaseDate", valueDate: MATERNALGUARD_DSI_RELEASE_DATE },
