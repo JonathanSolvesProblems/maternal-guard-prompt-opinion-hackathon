@@ -12,7 +12,7 @@ This is the human-readable companion to the JSON model card that every MaternalG
 
 ## Publisher
 
-MaternalGuard hackathon team.
+JonathanSolvesProblems.
 Contact: `jonathan@jonathanandrei.com`.
 **No legal entity backs this artifact.** This is a hackathon prototype. Use in research and demonstration only, not clinical deployment without a covered-entity sponsor.
 
@@ -40,7 +40,7 @@ Every one of these is ALSO carried inline on every Provenance the server writes,
 | **Cautioned out-of-scope use** | Not for pediatric obstetrics, not for pregnancy loss / fetal demise workflows without human triage, not for acute L&D decisioning. |
 | **Algorithm methodology** | Rule-based. |
 | **Underlying knowledge source** | ICD-10-CM Z3A/Z34 code families; ACOG Practice Bulletins (PB #190, #201, #203, #222, #229, #234); IADPSG criteria; NCQA HEDIS PPC (NQF #1517); LOINC-coded observations. Full list under **Bibliography** below. |
-| **Developer** | MaternalGuard hackathon team; prototype only, no legal entity. |
+| **Developer** | JonathanSolvesProblems; prototype only, no legal entity. |
 | **Funding source** | Unfunded hackathon submission. |
 | **Release date** | 2026-05-15 |
 | **Version** | 0.4.0 |

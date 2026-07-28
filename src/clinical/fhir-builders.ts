@@ -300,7 +300,7 @@ export function buildProvenance(input: ProvenanceInput): fhirR4.Provenance {
         value: `mg-dsi-v${MATERNALGUARD_DSI_VERSION}`,
       },
     ],
-    manufacturer: "MaternalGuard (hackathon prototype, no legal entity)",
+    manufacturer: "JonathanSolvesProblems (hackathon prototype, no legal entity)",
     manufactureDate: MATERNALGUARD_DSI_RELEASE_DATE,
     deviceName: [
       {
@@ -411,7 +411,7 @@ export function buildProvenance(input: ProvenanceInput): fhirR4.Provenance {
       {
         url: "developer",
         valueString:
-          "MaternalGuard hackathon team (jonathan@jonathanandrei.com); prototype only, no legal entity.",
+          "JonathanSolvesProblems (jonathan@jonathanandrei.com); prototype only, no legal entity.",
       },
       { url: "fundingSource", valueString: "Unfunded hackathon submission." },
       { url: "releaseDate", valueDate: MATERNALGUARD_DSI_RELEASE_DATE },
