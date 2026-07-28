@@ -404,9 +404,9 @@ class OpenMaternalDashboardTool implements IMcpTool {
           // during huddle review") so the audit trail is populated
           // without asking the clinician to type. Save-edits is a
           // deliberate detour; it belongs behind an explicit Edit
-          // affordance, not on the primary triage card. This matches
-          // Pawan's "from 1000 clicks to copilots" thesis: the whole
-          // reason the dashboard exists is to remove typing.
+          // affordance, not on the primary triage card. The whole reason
+          // the dashboard exists is to remove typing during morning
+          // huddle triage.
           if (p.tasks.length) {
             inner.push(separator());
             inner.push(text(`Draft tasks (${p.tasks.length})`, { bold: true }));

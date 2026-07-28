@@ -92,4 +92,4 @@ Or upload via Render's UI using `render.yaml`. Set `MATERNALGUARD_BUNDLED_PATIEN
 
 ## Why this exists
 
-Two of the three top winners (LookCloser, LoopGuard) shipped interactive UI alongside their MCP servers. Chat-only tools score lower on Magnus's "interactable interface is more akin to a realistic workflow" criterion. This sidecar closes that gap without throwing away the TypeScript codebase.
+Two of the three top winners at Agents Assemble (LookCloser, LoopGuard) shipped interactive UI alongside their MCP servers. Chat-only tools score lower against the "interactable interface is more akin to a realistic workflow" bar the reviewers flagged. This sidecar closes that gap without throwing away the TypeScript codebase.

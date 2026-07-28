@@ -48,7 +48,7 @@ Same shape for Reject, Activate, Dismiss:
    - `contained[1]` is an AI-ModelCard `DocumentReference` with a **CHAI Applied Model Card** content slice
    - `extension[0].url` equals `https://maternalguard.local/extensions/dsi-transparency/summary` with 13 (b)(11)(iv)(A) source-attribute sub-extensions filled in (interventionName, purpose, intendedPopulation, cautionedOutOfScopeUse, algorithmMethodology, underlyingKnowledgeSource, developer, fundingSource, releaseDate, version, biasAssessment, warningsLimitations, regulatoryFramework)
 
-This is the exact wire shape MeldRx / Darena ship to certified customers. A 3-second cut of this JSON is a great trust-story b-roll for the Pawan Jindal / Magnus Wieslander reconnect demo video.
+This is the exact wire shape MeldRx / Darena ship to certified customers. A 3-second cut of this JSON is a strong trust-story b-roll shot for any demo video that wants to show the (b)(11) transparency artifact without a slide.
 
 ### Inspect duplicate draft Flags (historical or new)
 

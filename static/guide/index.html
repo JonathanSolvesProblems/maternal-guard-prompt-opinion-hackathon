@@ -401,10 +401,10 @@
 
 <hr class="rule">
 
-<section class="reveal" id="pawan">
-  <div class="section-label">Part I &mdash; for Prompt Opinion builders</div>
-  <h2>The buttons-only huddle Pawan Jindal keeps writing about.</h2>
-  <p>From <em>1000 Clicks to Copilots</em>: the fewer keystrokes between a clinical intent and a chart write, the more useful the copilot. MaternalGuard's dashboard is designed for the huddle table, not the chart form.</p>
+<section class="reveal" id="ui">
+  <div class="section-label">Part I &mdash; the clinician surface</div>
+  <h2>A buttons-only huddle, not another chart form.</h2>
+  <p>The fewer keystrokes between a clinical intent and a chart write, the more useful the tool. MaternalGuard's dashboard is designed for the morning huddle table &mdash; a triage board a clinician acts on with a mouse in one hand and coffee in the other, not another form to fill in.</p>
   <ul class="editorial">
     <li><strong>Approve, Reject, Activate, Dismiss.</strong> Zero typing. Server writes the default audit reason so the trail stays populated without asking anyone to type.</li>
     <li><strong>Instant optimistic toast on click:</strong> <em>Approving: &lt;task&gt;</em> fires before the FHIR round-trip. The one-to-two-second write completes, then a green <em>Approved</em> banner renders at the top of the auto-refreshed huddle. No scrolling to confirm.</li>
@@ -417,10 +417,10 @@
 
 <hr class="rule">
 
-<section class="reveal" id="magnus">
-  <div class="section-label">Part II &mdash; for (b)(11)-certified stacks</div>
+<section class="reveal" id="audit">
+  <div class="section-label">Part II &mdash; the audit surface</div>
   <h2>Every governed write ships an AI Transparency Provenance you can audit.</h2>
-  <p>For a certified body module like Darena Health / MeldRx, the interesting artifact is not the tool call. It is the audit trail behind every chart write. MaternalGuard emits the shape below on every Task and every Flag transition.</p>
+  <p>For any (b)(11)-certified stack that already carries body modules like Darena Health / MeldRx, the interesting artifact is not the tool call &mdash; it is the audit trail behind every chart write. MaternalGuard emits the shape below on every Task and every Flag transition.</p>
   <ul class="editorial">
     <li><span class="mono">meta.profile[0]</span> = <code>AI-Provenance</code> (HL7 AI Transparency on FHIR IG v1.0.0-ballot, DSTU January 2026).</li>
     <li><span class="mono">meta.security[0].code</span> = <code>AIAST</code> (Artificial Intelligence Asserted, HL7 v3 ObservationValue).</li>

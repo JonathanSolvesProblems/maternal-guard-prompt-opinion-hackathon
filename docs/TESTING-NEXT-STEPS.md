@@ -342,7 +342,7 @@ You should still see all 5 grounding documents (NICE NG133, USPSTF, CDC GBS, IAD
 
 ## What to do after the tests pass
 
-1. Send Magnus the follow-up note that includes the `fastmcp` UI question.
+1. Send the Darena team the follow-up note that includes the `fastmcp` UI question.
 2. Demo the panel scan and write-back tools in your next Prompt Opinion sync.
 3. Decide whether to migrate to Python `fastmcp` for prefab UI components, or wait for the TypeScript ADK to ship a UI layer.
 4. Connect to Epic FHIR Sandbox for portability validation.

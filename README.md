@@ -14,7 +14,7 @@ Honorable Mention (top 10 of 300+), [Agents Assemble — The Healthcare AI Endga
 
 ---
 
-### For Prompt Opinion builders (Pawan Jindal's *1000 Clicks to Copilots* thesis)
+### The clinician surface
 
 - **Buttons-only clinician dashboard.** Approve / Reject / Activate / Dismiss on every draft Task and Flag. Zero typing. Server supplies the audit reason so the trail stays populated.
 - **Optimistic UI:** instant "Approving: &lt;task&gt;" toast on click; ~1-2s FHIR round-trip; green "✓ Approved" banner at the top of the auto-refreshed huddle. No scrolling to confirm.
@@ -22,7 +22,7 @@ Honorable Mention (top 10 of 300+), [Agents Assemble — The Healthcare AI Endga
 - **SHARP-on-MCP + FHIR Context Extension:** consumes `X-FHIR-Server-URL`, `X-FHIR-Access-Token`, `X-Patient-ID` out of the box. No custom auth code; drops into any Prompt Opinion workspace with FHIR Context enabled.
 - **Soft-degradation contract:** any FHIR read failure returns `{status:"no-op", blocksNextStep:false}` — never a red banner in chat. The Priority-1 chart-writeback loop always completes.
 
-### For (b)(11)-certified stacks like Darena Health / MeldRx (Magnus Wieslander)
+### The audit surface — for (b)(11)-certified stacks
 
 - **Every governed write emits an HL7 AI Transparency on FHIR Provenance.** `meta.profile[0] = AI-Provenance`, `meta.security[0].code = AIAST`.
 - **Contained `AI-Device` (`aiKind = rule-based`) linked to a contained `AI-ModelCard` DocumentReference** pointing at a live, resolvable [CHAI Applied Model Card JSON](https://maternalguard.jonathanandrei.com/dsi/model-card.json). No 404 when a reviewer follows the (b)(11) source-attribute reference.

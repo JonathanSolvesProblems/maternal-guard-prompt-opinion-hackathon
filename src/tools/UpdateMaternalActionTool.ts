@@ -137,11 +137,10 @@ class UpdateMaternalActionTool implements IMcpTool {
               );
             }
             // Reject NO LONGER requires a typed reason. The dashboard is
-            // meant to be a one-click surface (Pawan's "1000 clicks to
-            // copilots" thesis); we don't want to block the button on a
-            // free-text field. Chat callers can still pass a reason
-            // string; if omitted we record a default so the audit trail
-            // stays populated.
+            // meant to be a one-click surface; we don't want to block the
+            // button on a free-text field. Chat callers can still pass a
+            // reason string; if omitted we record a default so the audit
+            // trail stays populated.
             const rejectionReason =
               input.action === "reject"
                 ? (input.reason && input.reason.trim()) ||
