@@ -1,0 +1,4 @@
+# Vite output inlined into a single 6.6MB HTML file. It is build product, not
+# source, and it outweighs the TypeScript 28x, which made GitHub label the whole
+# repo HTML.
+static/prefab-renderer.html linguist-generated=true
